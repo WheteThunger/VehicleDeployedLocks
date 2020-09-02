@@ -94,7 +94,7 @@ Alternatively, you can grant permissions by vehicle type:
 
 Plugins can call these APIs to deploy a lock to a supported vehicle. The `BasePlayer` parameter is optional, but providing it is recommended as it allows for potential compatibility with auto-lock plugins, and allows the player to access the key lock without a key.
 
-Note: These will skip several checks, such as permissions and whether the player is building blocked, allowing your plugin to use discretion. If you want to use the same checks as this plugin, there are API methods for that as well.
+Note: These will skip several checks, such as permissions, whether the player is building blocked, and whether the vehicle is mounted. This allows your plugin to use discretion to determine whether the player should be allowed to deploy a particular lock to a particular vehicle.
 
 ```csharp
 CodeLock API_DeployCodeLock(BaseVehicle vehicle, BasePlayer player, bool isFree = true)
@@ -123,7 +123,7 @@ bool API_CanPlayerDeployKeyLock(BasePlayer player, BaseVehicle vehicle)
 #### CanDeployVehicleCodeLock / CanDeployVehicleKeyLock
 
 - Called when a player or a plugin tries to deploy a lock to a vehicle.
-- Returning `false` will prevent the lock from being deployed, and none of the player's items will be consumed.
+- Returning `false` will prevent the lock from being deployed. None of the player's items will be consumed.
 - Returning `null` will result in the default behavior.
 
 ```csharp
