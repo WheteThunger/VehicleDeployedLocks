@@ -8,7 +8,7 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("Vehicle Deployed Locks", "WhiteThunder", "0.1.0")]
+    [Info("Vehicle Deployed Locks", "WhiteThunder", "0.2.0")]
     [Description("Allows players to deploy code locks and key locks to vehicles.")]
     internal class VehicleDeployedLocks : CovalencePlugin
     {
@@ -165,10 +165,7 @@ namespace Oxide.Plugins
                 if (driverModule != null)
                     baseLock.SetParent(driverModule);
                 else
-                {
                     baseLock.Kill();
-                    Interface.CallHook("OnCarLockDelayedKill", car);
-                }
             });
         }
 
