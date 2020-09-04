@@ -67,7 +67,7 @@ Alternatively, you can grant permissions by vehicle type:
 - `CraftCooldownSeconds` -- Cooldown for players to craft a lock if they don't have one in their inventory. Since players can pickup vehicle-deployed locks (by design), this cooldown prevents players from effectively making locks faster than they could normally craft them. Configure this based on the crafting speed of locks on your server.
 - `ModularCarSettings`
   - `AllowEditingWhileLockedOut` -- Whether to allow players to edit a car at a lift while they are not authorized to the car's lock. This is `true` by default to be consistent with the vanilla car locks which don't prevent players from editing the car. Setting this to `false` will make it impossible for unauthorized players to edit the car.
-- `SharingSettings` (each `true` or `false`) -- Whether to allow players to bypass locks placed by their clanmates, ally clanmates, friends or teammates. More advanced sharing (such as players being in control of these settings) can be achieved via compatible sharing plugins.
+- `DefaultSharingSettings` (each `true` or `false`) -- Whether to allow players to bypass locks placed by their clanmates, ally clanmates, friends or teammates. More advanced sharing (such as players being in control of these settings) can be achieved via compatible sharing plugins.
 
 ## Localization
 
