@@ -54,7 +54,7 @@ Alternatively, you can grant permissions by vehicle type:
   "ModularCarSettings": {
     "AllowEditingWhileLockedOut": true
   },
-  "SharingSettings": {
+  "DefaultSharingSettings": {
     "Clan": false,
     "ClanOrAlly": false,
     "Friends": false,

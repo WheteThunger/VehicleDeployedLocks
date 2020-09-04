@@ -8,7 +8,7 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("Vehicle Deployed Locks", "WhiteThunder", "0.2.0")]
+    [Info("Vehicle Deployed Locks", "WhiteThunder", "0.3.0")]
     [Description("Allows players to deploy code locks and key locks to vehicles.")]
     internal class VehicleDeployedLocks : CovalencePlugin
     {
@@ -699,7 +699,7 @@ namespace Oxide.Plugins
             [JsonProperty("ModularCarSettings")]
             public ModularCarSettings ModularCarSettings = new ModularCarSettings();
 
-            [JsonProperty("SharingSettings")]
+            [JsonProperty("DefaultSharingSettings")]
             public SharingSettings SharingSettings = new SharingSettings();
         }
 
