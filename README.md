@@ -8,6 +8,7 @@ Notes:
 - Compatible with most plugins that add storage containers to vehicles.
 - Modular cars must have a cockpit module (i.e., driver seat) to receive a lock. The lock will deploy to the front-most cockpit module if there are multiple. If that cockpit is removed, the lock is moved to another cockpit module if present, else destroyed.
 - Modular cars may have a built-in lock at the same time as a deployed lock. This is not recommended, but if this happens, players will need to simultaneously satisfy the rules of the built-in lock and the deployed lock in order to access the car.
+- The lock position for ridable horses is a bit awkard and sticks out significantly, but this seems to be required in order for the player to be able to interact with it in most positions.
 
 ## Commands
 
@@ -23,10 +24,12 @@ Notes:
 
 Alternatively, you can grant permissions by vehicle type:
 - `vehicledeployedlocks.codelock.chinook`
+- `vehicledeployedlocks.codelock.kayak`
 - `vehicledeployedlocks.codelock.minicopter`
 - `vehicledeployedlocks.codelock.modularcar`
 - `vehicledeployedlocks.codelock.rowboat`
 - `vehicledeployedlocks.codelock.rhib`
+- `vehicledeployedlocks.codelock.ridablehorse`
 - `vehicledeployedlocks.codelock.scraptransport`
 - `vehicledeployedlocks.codelock.sedan`
 
@@ -37,9 +40,11 @@ Alternatively, you can grant permissions by vehicle type:
 
 Alternatively, you can grant permissions by vehicle type:
 - `vehicledeployedlocks.keylock.chinook`
+- `vehicledeployedlocks.keylock.kayak`
 - `vehicledeployedlocks.keylock.minicopter`
 - `vehicledeployedlocks.keylock.modularcar`
 - `vehicledeployedlocks.keylock.rhib`
+- `vehicledeployedlocks.keylock.ridablehorse`
 - `vehicledeployedlocks.keylock.rowboat`
 - `vehicledeployedlocks.keylock.scraptransport`
 - `vehicledeployedlocks.keylock.sedan`
@@ -63,10 +68,10 @@ Alternatively, you can grant permissions by vehicle type:
 }
 ```
 - `AllowIfDifferentOwner` (`true` or `false`) -- Whether to allow players to deploy a lock to a vehicle owned by someone else (i.e., a vehicle whose `OwnerID` is a different player's Steam ID). Such vehicles are likely spawned by a plugin, or a plugin allowed the player to claim that vehicle. This is `false` by default to protect owned vehicles from having locks deployed to them by others. Note: If the owner leaves a code lock unlocked, another player can still lock it with a custom code to lock out the owner.
-- `AllowIfNoOwner` (`true` or `false`) -- Whether to allow players to deploy a lock to a vehicle that has no owner (i.e., `OwnerID` is `0`), which usually describes vehicles that spawned naturally in the world, though some plugins may spawn vehicles with no owner as well. Note: Helicopters spawned at the Air Wolf vendor have no owner by default, unless a plugin sets it.
+- `AllowIfNoOwner` (`true` or `false`) -- Whether to allow players to deploy a lock to a vehicle that has no owner (i.e., `OwnerID` is `0`), which usually describes vehicles that spawned naturally in the world, though some plugins may spawn vehicles with no owner as well. Note: Vehicles spawned at NPC vendors have no owner by default, unless set by a plugin such as [Vehicle Vendor Options](https://umod.org/plugins/vehicle-vendor-options).
 - `CraftCooldownSeconds` -- Cooldown for players to craft a lock if they don't have one in their inventory. Since players can pickup vehicle-deployed locks (by design), this cooldown prevents players from effectively making locks faster than they could normally craft them. Configure this based on the crafting speed of locks on your server.
 - `ModularCarSettings`
-  - `AllowEditingWhileLockedOut` -- Whether to allow players to edit a car at a lift while they are not authorized to the car's lock. This is `true` by default to be consistent with the vanilla car locks which don't prevent players from editing the car. Setting this to `false` will make it impossible for unauthorized players to edit the car.
+  - `AllowEditingWhileLockedOut` -- Whether to allow players to edit a car at a lift while they are not authorized to the car's lock. This is `true` by default to be consistent with the vanilla car locks which allow players to edit the car (which likely allows removal of the lock). Setting this to `false` will make it impossible for unauthorized players to edit the car.
 - `DefaultSharingSettings` (each `true` or `false`) -- Whether to allow players to bypass locks placed by their clanmates, ally clanmates, friends or teammates. More advanced sharing (such as players being in control of these settings) can be achieved via compatible sharing plugins.
 
 ## Localization
@@ -107,7 +112,7 @@ The return value will be the newly deployed lock, or `null` if a lock was not de
 - The vehicle already has a code lock or a key lock
 - The vehicle was destroyed or is "dead"
 - Another plugin blocked it with the `CanDeployVehicleCodeLock` or `CanDeployVehicleKeyLock` hook
-- The `isFree` argument was `false`, and the player didn't have sufficient items or resources to deploy the lock (this also takes into account permission for free locks)
+- The `isFree` argument was `false`, and the player didn't have sufficient items or resources to deploy the lock (this also takes into account permission for free locks), or recently purchased one and was on cooldown
 
 #### API_CanPlayerDeployCodeLock / API_CanPlayerDeployKeyLock
 
