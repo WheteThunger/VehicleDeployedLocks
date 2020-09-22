@@ -8,7 +8,7 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("Vehicle Deployed Locks", "WhiteThunder", "0.4.0")]
+    [Info("Vehicle Deployed Locks", "WhiteThunder", "0.5.0")]
     [Description("Allows players to deploy code locks and key locks to vehicles.")]
     internal class VehicleDeployedLocks : CovalencePlugin
     {
@@ -110,56 +110,87 @@ namespace Oxide.Plugins
             CraftCodeLockCooldowns = new CooldownManager(PluginConfig.CraftCooldownSeconds);
         }
 
-        object CanMountEntity(BasePlayer player, BaseMountable entity)
-        {
-            if (entity == null) return null;
-            return CanPlayerInteractWithVehicle(player, entity.GetParentEntity() as BaseVehicle);
-        }
+        private object CanMountEntity(BasePlayer player, BaseMountable entity) =>
+            CanPlayerInteractWithParentVehicle(player, entity);
 
-        object CanLootEntity(BasePlayer player, StorageContainer container)
-        {
-            if (container == null) return null;
-            var parent = container.GetParentEntity();
-            var vehicle = parent as BaseVehicle ?? (parent as VehicleModuleStorage)?.Vehicle;
-            return CanPlayerInteractWithVehicle(player, vehicle);
-        }
+        private object CanLootEntity(BasePlayer player, StorageContainer container) =>
+            CanPlayerInteractWithParentVehicle(player, container);
 
-        // For modular car tankers
-        object CanLootEntity(BasePlayer player, LiquidContainer container)
-        {
-            if (container == null) return null;
-            var vehicle = (container.GetParentEntity() as VehicleModuleStorage)?.Vehicle as BaseVehicle;
-            return CanPlayerInteractWithVehicle(player, vehicle);
-        }
+        private object CanLootEntity(BasePlayer player, ContainerIOEntity container) =>
+            CanPlayerInteractWithParentVehicle(player, container);
 
-        object CanLootEntity(BasePlayer player, ModularCarGarage carLift)
+        private object CanLootEntity(BasePlayer player, RidableHorse horse) =>
+            CanPlayerInteractWithVehicle(player, horse);
+
+        private object CanLootEntity(BasePlayer player, ModularCarGarage carLift)
         {
             if (carLift == null) return null;
             if (PluginConfig.ModularCarSettings.AllowEditingWhileLockedOut || !carLift.PlatformIsOccupied) return null;
             return CanPlayerInteractWithVehicle(player, carLift.carOccupant);
         }
 
-        object CanLootEntity(BasePlayer player, RidableHorse horse) =>
+        private object OnHorseLead(RidableHorse horse, BasePlayer player) =>
             CanPlayerInteractWithVehicle(player, horse);
 
-        object OnHorseLead(RidableHorse horse, BasePlayer player) =>
-            CanPlayerInteractWithVehicle(player, horse);
-
-        private object CanPlayerInteractWithVehicle(BasePlayer player, BaseVehicle vehicle)
+        private object OnSwitchToggle(ElectricSwitch electricSwitch, BasePlayer player)
         {
-            if (player == null || vehicle == null) return null;
+            if (electricSwitch == null) return null;
+
+            var autoTurret = electricSwitch.GetParentEntity() as AutoTurret;
+            if (autoTurret != null)
+                return CanPlayerInteractWithParentVehicle(player, autoTurret);
+
+            return null;
+        }
+
+        private object OnTurretAuthorize(AutoTurret entity, BasePlayer player) =>
+            CanPlayerInteractWithParentVehicle(player, entity);
+
+        private object OnTurretTarget(AutoTurret autoTurret, BasePlayer player)
+        {
+            if (autoTurret == null || player == null) return null;
+
+            var turretParent = autoTurret.GetParentEntity();
+            var vehicle = turretParent as BaseVehicle ?? (turretParent as BaseVehicleModule)?.Vehicle;
+            if (vehicle == null) return null;
 
             var baseLock = GetVehicleLock(vehicle);
             if (baseLock == null) return null;
 
+            if (CanPlayerBypassLock(player, baseLock))
+                return false;
+
+            return null;
+        }
+
+        private object CanPlayerInteractWithParentVehicle(BasePlayer player, BaseEntity entity)
+        {
+            if (entity == null) return null;
+
+            var parent = entity.GetParentEntity();
+            var vehicle = parent as BaseVehicle ?? (parent as BaseVehicleModule)?.Vehicle;
+            return CanPlayerInteractWithVehicle(player, vehicle);
+        }
+
+        private object CanPlayerInteractWithVehicle(BasePlayer player, BaseVehicle vehicle, bool provideFeedback = true)
+        {
+            if (player == null || vehicle == null) return null;
+
+            var baseLock = GetVehicleLock(vehicle);
+            if (baseLock == null || !baseLock.IsLocked()) return null;
+
             if (!CanPlayerBypassLock(player, baseLock))
             {
-                Effect.server.Run(Prefab_CodeLock_DeniedEffect, baseLock, 0, Vector3.zero, Vector3.forward);
-                ChatMessage(player, "Generic.Error.VehicleLocked");
+                if (provideFeedback)
+                {
+                    Effect.server.Run(Prefab_CodeLock_DeniedEffect, baseLock, 0, Vector3.zero, Vector3.forward);
+                    ChatMessage(player, "Generic.Error.VehicleLocked");
+                }
+
                 return false;
             }
 
-            if (baseLock.IsLocked())
+            if (provideFeedback && baseLock.IsLocked())
                 Effect.server.Run(Prefab_CodeLock_UnlockEffect, baseLock, 0, Vector3.zero, Vector3.forward);
 
             return null;
@@ -205,6 +236,9 @@ namespace Oxide.Plugins
 
         private bool API_CanPlayerDeployKeyLock(BasePlayer player, BaseVehicle vehicle) =>
             CanPlayerDeployLockForAPI(player, vehicle, LockType.KeyLock);
+
+        private bool API_CanAccessVehicle(BasePlayer player, BaseVehicle vehicle, bool provideFeedback = true) =>
+            CanPlayerInteractWithVehicle(player, vehicle, provideFeedback) == null;
 
         #endregion
 
@@ -399,7 +433,7 @@ namespace Oxide.Plugins
         private bool HasPermissionAny(IPlayer player, params string[] permissionNames)
         {
             foreach (var perm in permissionNames)
-                if (permission.UserHasPermission(player.Id, perm))
+                if (player.HasPermission(perm))
                     return true;
 
             return false;
@@ -651,13 +685,11 @@ namespace Oxide.Plugins
             return false;
         }
 
-        private BaseLock GetVehicleLock(BaseVehicle car) =>
-            car.GetSlot(BaseEntity.Slot.Lock) as BaseLock;
+        private BaseLock GetVehicleLock(BaseVehicle vehicle) =>
+            vehicle.GetSlot(BaseEntity.Slot.Lock) as BaseLock;
 
         private bool CanPlayerBypassLock(BasePlayer player, BaseLock baseLock)
         {
-            if (!baseLock.IsLocked()) return true;
-
             object hookResult = Interface.CallHook("CanUseLockedEntity", player, baseLock);
             if (hookResult is bool) return (bool)hookResult;
 
