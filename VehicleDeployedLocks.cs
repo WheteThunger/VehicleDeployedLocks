@@ -8,7 +8,7 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("Vehicle Deployed Locks", "WhiteThunder", "0.5.0")]
+    [Info("Vehicle Deployed Locks", "WhiteThunder", "0.5.1")]
     [Description("Allows players to deploy code locks and key locks to vehicles.")]
     internal class VehicleDeployedLocks : CovalencePlugin
     {
@@ -257,8 +257,7 @@ namespace Oxide.Plugins
             if (player.IsServer) return;
 
             var basePlayer = player.Object as BasePlayer;
-
-            var vehicle = GetLookEntity(basePlayer) as BaseVehicle;
+            var vehicle = GetVehicleFromEntity(GetLookEntity(basePlayer), basePlayer);
 
             string perm = null;
             Vector3 lockPosition = Vector3.zero;
@@ -683,6 +682,47 @@ namespace Oxide.Plugins
             }
 
             return false;
+        }
+
+        private BaseVehicle GetVehicleFromEntity(BaseEntity entity, BasePlayer basePlayer)
+        {
+            if (entity == null)
+                return null;
+
+            var vehicle = entity as BaseVehicle;
+            if (!ReferenceEquals(vehicle, null))
+                return vehicle;
+
+            var carLift = entity as ModularCarGarage;
+            if (!ReferenceEquals(carLift, null))
+                return carLift.carOccupant;
+
+            var hitchTrough = entity as HitchTrough;
+            if (!ReferenceEquals(hitchTrough, null))
+                return GetClosestHorse(hitchTrough, basePlayer);
+
+            return null;
+        }
+
+        private RidableHorse GetClosestHorse(HitchTrough hitchTrough, BasePlayer player)
+        {
+            var closestDistance = 1000f;
+            RidableHorse closestHorse = null;
+
+            for (var i = 0; i < hitchTrough.hitchSpots.Length; i++)
+            {
+                var hitchSpot = hitchTrough.hitchSpots[i];
+                if (!hitchSpot.IsOccupied()) continue;
+
+                var distance = Vector3.Distance(player.transform.position, hitchSpot.spot.position);
+                if (distance < closestDistance)
+                {
+                    closestDistance = distance;
+                    closestHorse = hitchSpot.horse.Get(serverside: true) as RidableHorse;
+                }
+            }
+
+            return closestHorse;
         }
 
         private BaseLock GetVehicleLock(BaseVehicle vehicle) =>
