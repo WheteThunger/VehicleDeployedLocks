@@ -11,6 +11,11 @@ Notes:
 - Modular cars may have a built-in lock at the same time as a deployed lock. This is not recommended, but if this happens, players will need to simultaneously satisfy the rules of the built-in lock and the deployed lock in order to access the car.
 - The lock position for ridable horses is a bit awkard and sticks out significantly, but this seems to be required in order for the player to be able to interact with it in most positions.
 
+## Planned improvements
+
+- Support Hot Air Balloons
+- Support Taxi Modules (currently players cannot access taxi modules without lock authorization)
+
 ## Commands
 
 - `vehiclecodelock` (or `vcodelock`, `vlock`) -- Deploy a code lock to the vehicle you are aiming at. You must be within several meters of the vehicle. You must not be building blocked.
