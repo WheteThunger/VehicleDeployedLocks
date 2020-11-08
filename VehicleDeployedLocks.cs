@@ -8,7 +8,7 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("Vehicle Deployed Locks", "WhiteThunder", "0.5.1")]
+    [Info("Vehicle Deployed Locks", "WhiteThunder", "0.6.0")]
     [Description("Allows players to deploy code locks and key locks to vehicles.")]
     internal class VehicleDeployedLocks : CovalencePlugin
     {
@@ -22,6 +22,7 @@ namespace Oxide.Plugins
         private const string Permission_CodeLock_Free = "vehicledeployedlocks.codelock.free";
         private const string Permission_CodeLock_AllVehicles = "vehicledeployedlocks.codelock.allvehicles";
         private const string Permission_CodeLock_Chinook = "vehicledeployedlocks.codelock.chinook";
+        private const string Permission_CodeLock_HotAirBalloon = "vehicledeployedlocks.codelock.hotairballoon";
         private const string Permission_CodeLock_Kayak = "vehicledeployedlocks.codelock.kayak";
         private const string Permission_CodeLock_MiniCopter = "vehicledeployedlocks.codelock.minicopter";
         private const string Permission_CodeLock_ModularCar = "vehicledeployedlocks.codelock.modularcar";
@@ -34,6 +35,7 @@ namespace Oxide.Plugins
         private const string Permission_KeyLock_Free = "vehicledeployedlocks.keylock.free";
         private const string Permission_KeyLock_AllVehicles = "vehicledeployedlocks.keylock.allvehicles";
         private const string Permission_KeyLock_Chinook = "vehicledeployedlocks.keylock.chinook";
+        private const string Permission_KeyLock_HotAirBalloon = "vehicledeployedlocks.keylock.hotairballoon";
         private const string Permission_KeyLock_Kayak = "vehicledeployedlocks.keylock.kayak";
         private const string Permission_KeyLock_MiniCopter = "vehicledeployedlocks.keylock.minicopter";
         private const string Permission_KeyLock_ModularCar = "vehicledeployedlocks.keylock.modularcar";
@@ -56,6 +58,7 @@ namespace Oxide.Plugins
         private const int KeyLockItemId = -850982208;
 
         private readonly Vector3 LockPosition_Chinook = new Vector3(-1.175f, 2, 6.5f);
+        private readonly Vector3 LockPosition_HotAirBalloon = new Vector3(1.45f, 0.9f, 0);
         private readonly Vector3 LockPosition_Kayak = new Vector3(-0.43f, 0.2f, 0.2f);
         private readonly Vector3 LockPosition_MiniCopter = new Vector3(-0.15f, 0.7f, -0.1f);
         private readonly Vector3 LockPosition_VehicleModule = new Vector3(-0.9f, 0.35f, -0.5f);
@@ -85,6 +88,7 @@ namespace Oxide.Plugins
             permission.RegisterPermission(Permission_CodeLock_Free, this);
             permission.RegisterPermission(Permission_CodeLock_AllVehicles, this);
             permission.RegisterPermission(Permission_CodeLock_Chinook, this);
+            permission.RegisterPermission(Permission_CodeLock_HotAirBalloon, this);
             permission.RegisterPermission(Permission_CodeLock_Kayak, this);
             permission.RegisterPermission(Permission_CodeLock_MiniCopter, this);
             permission.RegisterPermission(Permission_CodeLock_ModularCar, this);
@@ -97,6 +101,7 @@ namespace Oxide.Plugins
             permission.RegisterPermission(Permission_KeyLock_Free, this);
             permission.RegisterPermission(Permission_KeyLock_AllVehicles, this);
             permission.RegisterPermission(Permission_KeyLock_Chinook, this);
+            permission.RegisterPermission(Permission_KeyLock_HotAirBalloon, this);
             permission.RegisterPermission(Permission_KeyLock_Kayak, this);
             permission.RegisterPermission(Permission_KeyLock_MiniCopter, this);
             permission.RegisterPermission(Permission_KeyLock_ModularCar, this);
@@ -132,6 +137,9 @@ namespace Oxide.Plugins
         private object OnHorseLead(RidableHorse horse, BasePlayer player) =>
             CanPlayerInteractWithVehicle(player, horse);
 
+        private object OnHotAirBalloonToggle(HotAirBalloon hab, BasePlayer player) =>
+            CanPlayerInteractWithVehicle(player, hab);
+
         private object OnSwitchToggle(ElectricSwitch electricSwitch, BasePlayer player)
         {
             if (electricSwitch == null) return null;
@@ -166,13 +174,10 @@ namespace Oxide.Plugins
         private object CanPlayerInteractWithParentVehicle(BasePlayer player, BaseEntity entity)
         {
             if (entity == null) return null;
-
-            var parent = entity.GetParentEntity();
-            var vehicle = parent as BaseVehicle ?? (parent as BaseVehicleModule)?.Vehicle;
-            return CanPlayerInteractWithVehicle(player, vehicle);
+            return CanPlayerInteractWithVehicle(player, GetParentVehicle(entity));
         }
 
-        private object CanPlayerInteractWithVehicle(BasePlayer player, BaseVehicle vehicle, bool provideFeedback = true)
+        private object CanPlayerInteractWithVehicle(BasePlayer player, BaseCombatEntity vehicle, bool provideFeedback = true)
         {
             if (player == null || vehicle == null) return null;
 
@@ -277,7 +282,7 @@ namespace Oxide.Plugins
                 !VerifyVehicleHasNoLock(player, vehicle) ||
                 !VerifyVehicleCanHaveALock(player, vehicle) ||
                 !VerifyPlayerCanDeployLock(player, lockType, out payType) ||
-                !VerifyNotMounted(player, vehicle) ||
+                (vehicle is BaseVehicle && !VerifyNotMounted(player, vehicle as BaseVehicle)) ||
                 DeployWasBlocked(vehicle, basePlayer, lockType))
                 return;
 
@@ -331,7 +336,7 @@ namespace Oxide.Plugins
                 !DeployWasBlocked(vehicle, player, lockType);
         }
 
-        private bool DeployWasBlocked(BaseVehicle vehicle, BasePlayer player, LockType lockType)
+        private bool DeployWasBlocked(BaseCombatEntity vehicle, BasePlayer player, LockType lockType)
         {
             var hookName = lockType == LockType.CodeLock ? "CanDeployVehicleCodeLock" : "CanDeployVehicleKeyLock";
             object hookResult = Interface.CallHook(hookName, vehicle, player);
@@ -346,14 +351,14 @@ namespace Oxide.Plugins
             return false;
         }
 
-        private bool VerifyVehicleIsNotDead(IPlayer player, BaseVehicle vehicle)
+        private bool VerifyVehicleIsNotDead(IPlayer player, BaseCombatEntity vehicle)
         {
             if (!vehicle.IsDead()) return true;
             ReplyToPlayer(player, "Deploy.Error.VehicleDead");
             return false;
         }
 
-        private bool VerifyNoOwnershipRestriction(IPlayer player, BaseVehicle vehicle)
+        private bool VerifyNoOwnershipRestriction(IPlayer player, BaseCombatEntity vehicle)
         {
             if (!AllowedNoOwner(vehicle))
             {
@@ -377,14 +382,14 @@ namespace Oxide.Plugins
             return false;
         }
 
-        private bool VerifyVehicleHasNoLock(IPlayer player, BaseVehicle vehicle)
+        private bool VerifyVehicleHasNoLock(IPlayer player, BaseCombatEntity vehicle)
         {
             if (GetVehicleLock(vehicle) == null) return true;
             ReplyToPlayer(player, "Deploy.Error.HasLock");
             return false;
         }
 
-        private bool VerifyVehicleCanHaveALock(IPlayer player, BaseVehicle vehicle)
+        private bool VerifyVehicleCanHaveALock(IPlayer player, BaseCombatEntity vehicle)
         {
             if (CanVehicleHaveALock(vehicle)) return true;
             ReplyToPlayer(player, "Deploy.Error.ModularCar.NoCockpit");
@@ -441,10 +446,10 @@ namespace Oxide.Plugins
         private string GetFreeLockPermission(LockType lockType) =>
             lockType == LockType.CodeLock ? Permission_CodeLock_Free : Permission_KeyLock_Free;
 
-        private bool AllowedNoOwner(BaseVehicle vehicle) =>
+        private bool AllowedNoOwner(BaseCombatEntity vehicle) =>
             PluginConfig.AllowIfNoOwner || vehicle.OwnerID != 0;
 
-        private bool AllowedDifferentOwner(IPlayer player, BaseVehicle vehicle) =>
+        private bool AllowedDifferentOwner(IPlayer player, BaseCombatEntity vehicle) =>
             PluginConfig.AllowIfDifferentOwner || vehicle.OwnerID == 0 || vehicle.OwnerID.ToString() == player.Id;
 
         private PayType DeterminePayType(IPlayer player, LockType lockType)
@@ -455,7 +460,7 @@ namespace Oxide.Plugins
             return GetPlayerLock(player.Object as BasePlayer, lockType) != null ? PayType.Item : PayType.Resources;
         }
 
-        private bool CanVehicleHaveALock(BaseVehicle vehicle)
+        private bool CanVehicleHaveALock(BaseCombatEntity vehicle)
         {
             // Only modular cars have restrictions
             var car = vehicle as ModularCar;
@@ -485,6 +490,15 @@ namespace Oxide.Plugins
 
         private bool CanCarHaveLock(ModularCar car) =>
             FindFirstDriverModule(car) != null;
+
+        private BaseCombatEntity GetParentVehicle(BaseEntity entity)
+        {
+            var parent = entity.GetParentEntity();
+            if (parent is HotAirBalloon || parent is BaseVehicle)
+                return parent as BaseCombatEntity;
+
+            return (parent as BaseVehicleModule)?.Vehicle;
+        }
 
         private VehicleModuleSeating FindFirstDriverModule(ModularCar car)
         {
@@ -615,6 +629,14 @@ namespace Oxide.Plugins
                 return true;
             }
 
+            var hab = entity as HotAirBalloon;
+            if (!ReferenceEquals(hab, null))
+            {
+                perm = lockType == LockType.CodeLock ? Permission_CodeLock_HotAirBalloon : Permission_KeyLock_HotAirBalloon;
+                lockPosition = LockPosition_HotAirBalloon;
+                return true;
+            }
+
             var kayak = entity as Kayak;
             if (!ReferenceEquals(kayak, null))
             {
@@ -684,14 +706,17 @@ namespace Oxide.Plugins
             return false;
         }
 
-        private BaseVehicle GetVehicleFromEntity(BaseEntity entity, BasePlayer basePlayer)
+        private BaseCombatEntity GetVehicleFromEntity(BaseEntity entity, BasePlayer basePlayer)
         {
             if (entity == null)
                 return null;
 
-            var vehicle = entity as BaseVehicle;
-            if (!ReferenceEquals(vehicle, null))
-                return vehicle;
+            if (entity is HotAirBalloon || entity is BaseVehicle)
+                return entity as BaseCombatEntity;
+
+            var module = entity as BaseVehicleModule;
+            if (module != null)
+                return module.Vehicle;
 
             var carLift = entity as ModularCarGarage;
             if (!ReferenceEquals(carLift, null))
@@ -725,7 +750,7 @@ namespace Oxide.Plugins
             return closestHorse;
         }
 
-        private BaseLock GetVehicleLock(BaseVehicle vehicle) =>
+        private BaseLock GetVehicleLock(BaseEntity vehicle) =>
             vehicle.GetSlot(BaseEntity.Slot.Lock) as BaseLock;
 
         private bool CanPlayerBypassLock(BasePlayer player, BaseLock baseLock)

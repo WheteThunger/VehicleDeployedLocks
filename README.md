@@ -1,20 +1,18 @@
-**Vehicle Deployed Locks** allows players to deploy code locks and key locks to various vehicles.
+## Features
 
-Deploying a lock to a vehicle will consume a lock from the player's inventory if available, or else a lock will be automatically purchased based on the blueprint price. Locks are free for players with additional permission.
+- Allows players to deploy code locks and key locks to various vehicles using commands.
+- Prevents players without lock authorization from accessing seats, fuel, storage, turrets and other vehicle features. Compatible with most plugins that add containers to vehicles.
+- Lock authorization may be shared with the lock owner's team, friends or clanmates based on the plugin configuration, or via compatible sharing plugins. This allows other players to access the vehicle without requiring a key or code, and prevents them from being targetted by turrets on the vehicle.
+- Deploying a lock consumes one from the player inventory, or consumes equivalent resources based on the blueprint price.
+- Free locks for players with permission.
+- (Coming soon) Support for taxi modules.
 
-Notes:
-- Players that do not have authorization to a vehicle's lock cannot access any features of the vehicle, including seats, fuel and storage, but they will still be able to enter transport bays like a modular car flatbed or the back of a scrap transport helicopter.
-  - Authorization may be shared with the lock owner's team, friends or clanmates based on the plugin configuration, or via compatible sharing plugins. Sharing is a convenience feature that allows other players to access the vehicle without a key or entering the code.
-  - Auto turrets deployed to the vehicle will not target players authorized to the lock.
-- Compatible with most plugins that add storage containers to vehicles.
+### Limitations
+
 - Modular cars must have a cockpit module (i.e., driver seat) to receive a lock. The lock will deploy to the front-most cockpit module if there are multiple. If that cockpit is removed, the lock is moved to another cockpit module if present, else destroyed.
 - Modular cars may have a built-in lock at the same time as a deployed lock. This is not recommended, but if this happens, players will need to simultaneously satisfy the rules of the built-in lock and the deployed lock in order to access the car.
-- The lock position for ridable horses is a bit awkard and sticks out significantly, but this seems to be required in order for the player to be able to interact with it in most positions.
-
-## Planned improvements
-
-- Support Hot Air Balloons
-- Support Taxi Modules (currently players cannot access taxi modules without lock authorization)
+- Locks do not prevent players from entering transport bays like a modular car flatbed or the back of a scrap transport helicopter.
+- The lock position for ridable horses is a bit awkward and sticks out significantly, but this seems to be required in order for the player to be able to interact with it in most positions.
 
 ## Commands
 
@@ -30,6 +28,7 @@ Notes:
 
 As an alternative to the `allvehicles` permission, you can grant permissions by vehicle type:
 - `vehicledeployedlocks.codelock.chinook`
+- `vehicledeployedlocks.codelock.hotairballoon`
 - `vehicledeployedlocks.codelock.kayak`
 - `vehicledeployedlocks.codelock.minicopter`
 - `vehicledeployedlocks.codelock.modularcar`
@@ -46,6 +45,7 @@ As an alternative to the `allvehicles` permission, you can grant permissions by 
 
 As an alternative to the `allvehicles` permission, you can grant permissions by vehicle type:
 - `vehicledeployedlocks.keylock.chinook`
+- `vehicledeployedlocks.keylock.hotairballoon`
 - `vehicledeployedlocks.keylock.kayak`
 - `vehicledeployedlocks.keylock.minicopter`
 - `vehicledeployedlocks.keylock.modularcar`
@@ -75,7 +75,7 @@ As an alternative to the `allvehicles` permission, you can grant permissions by 
 ```
 
 - `AllowIfDifferentOwner` (`true` or `false`) -- Whether to allow players to deploy a lock to a vehicle owned by someone else (i.e., a vehicle whose `OwnerID` is a different player's Steam ID). Such vehicles are likely spawned by a plugin, or a plugin allowed the player to claim that vehicle. This is `false` by default to protect owned vehicles from having locks deployed to them by others. Note: If the owner leaves a code lock unlocked, another player can still lock it with a custom code to lock out the owner.
-- `AllowIfNoOwner` (`true` or `false`) -- Whether to allow players to deploy a lock to a vehicle that has no owner (i.e., `OwnerID` is `0`), which usually describes vehicles that spawned naturally in the world, though some plugins may spawn vehicles with no owner as well. Note: Vehicles spawned at NPC vendors have no owner by default, unless set by a plugin such as [Vehicle Vendor Options](https://umod.org/plugins/vehicle-vendor-options). You can also use the [Claim Vehicle Ownership](https://umod.org/plugins/claim-vehicle-ownership) plugin to allow players to claim unowned vehicles with a cooldown.
+- `AllowIfNoOwner` (`true` or `false`) -- Whether to allow players to deploy a lock to a vehicle that has no owner (i.e., `OwnerID` is `0`), which usually describes vehicles that spawned naturally in the world, though some plugins may spawn vehicles with no owner as well. Note: Vehicles spawned at NPC vendors have no owner by default, unless set by a plugin such as [Vehicle Vendor Options](https://umod.org/plugins/vehicle-vendor-options). You can also use the [Claim Vehicle Ownership](https://umod.org/plugins/claim-vehicle-ownership) plugin to allow players to claim unowned vehicles with an optional cooldown.
 - `CraftCooldownSeconds` -- Cooldown for players to craft a lock if they don't have one in their inventory. Since players can pickup vehicle-deployed locks (by design), this cooldown prevents players from effectively making locks faster than they could normally craft them. Configure this based on the crafting speed of locks on your server.
 - `ModularCarSettings`
   - `AllowEditingWhileLockedOut` -- Whether to allow players to edit a car at a lift while they are not authorized to the car's lock. This is `true` by default to be consistent with the vanilla car locks which allow players to edit the car (which likely allows removal of the lock). Setting this to `false` will make it impossible for unauthorized players to edit the car.
@@ -109,8 +109,8 @@ Plugins can call these APIs to deploy a lock to a supported vehicle. The `BasePl
 Note: These will skip several checks, such as permissions, whether the player is building blocked, and whether the vehicle is mounted. This allows your plugin to use discretion to determine whether the player should be allowed to deploy a particular lock to a particular vehicle.
 
 ```csharp
-CodeLock API_DeployCodeLock(BaseVehicle vehicle, BasePlayer player, bool isFree = true)
-KeyLock API_DeployKeyLock(BaseVehicle vehicle, BasePlayer player, bool isFree = true)
+CodeLock API_DeployCodeLock(BaseCombatEntity vehicle, BasePlayer player, bool isFree = true)
+KeyLock API_DeployKeyLock(BaseCombatEntity vehicle, BasePlayer player, bool isFree = true)
 ```
 
 The return value will be the newly deployed lock, or `null` if a lock was not deployed for any of the following reasons.
@@ -126,8 +126,8 @@ The return value will be the newly deployed lock, or `null` if a lock was not de
 Plugins can call these APIs to see if a player is able to deploy a lock to the specified vehicle, following this plugin's configuration and performing the same checks as if the player attempted to deploy a lock via a command, except for permission, cooldown and mounted checks. These methods could be used, for example, by a plugin that adds a UI button to deploy a lock, since it wouldn't have to re-implement various checks that this plugin can already do.
 
 ```csharp
-bool API_CanPlayerDeployCodeLock(BasePlayer player, BaseVehicle vehicle)
-bool API_CanPlayerDeployKeyLock(BasePlayer player, BaseVehicle vehicle)
+bool API_CanPlayerDeployCodeLock(BasePlayer player, BaseCombatEntity vehicle)
+bool API_CanPlayerDeployKeyLock(BasePlayer player, BaseCombatEntity vehicle)
 ```
 
 #### API_CanAccessVehicle
@@ -135,7 +135,7 @@ bool API_CanPlayerDeployKeyLock(BasePlayer player, BaseVehicle vehicle)
 Plugins can call this API to determine whether a player has authorization to a possibly locked vehicle.
 
 ```csharp
-bool API_CanAccessVehicle(BasePlayer player, BaseVehicle vehicle, bool provideFeedback = true)
+bool API_CanAccessVehicle(BasePlayer player, BaseCombatEntity vehicle, bool provideFeedback = true)
 ```
 
 Returns `true` if any of the following criteria are met, else returns `false`.
@@ -156,21 +156,21 @@ If `provideFeedback` is true, the lock will play an access granted or denied sou
 - Returning `null` will result in the default behavior.
 
 ```csharp
-object CanDeployVehicleCodeLock(BaseVehicle vehicle, BasePlayer player)
-object CanDeployVehicleKeyLock(BaseVehicle vehicle, BasePlayer player)
+object CanDeployVehicleCodeLock(BaseCombatEntity vehicle, BasePlayer player)
+object CanDeployVehicleKeyLock(BaseCombatEntity vehicle, BasePlayer player)
 ```
 
-You can replace the `BaseVehicle` type with a more specific one to only run your hook method for specific vehicle types.
+You can replace the `BaseCombatEntity` type with a more specific one to only run your hook method for specific vehicle types.
 
 #### OnVehicleLockDeployed
 
 Called when a player or a plugin deploys a lock to a vehicle.
 
 ```csharp
-void OnVehicleLockDeployed(BaseVehicle vehicle, BaseLock baseLock)
+void OnVehicleLockDeployed(BaseCombatEntity vehicle, BaseLock baseLock)
 ```
 
-You can replace the `BaseVehicle` and `BaseLock` types with more specific ones to only run your hook method for specific vehicle/lock types.
+You can replace the `BaseCombatEntity` and `BaseLock` types with more specific ones to only run your hook method for specific vehicle/lock types.
 
 #### OnItemDeployed
 
