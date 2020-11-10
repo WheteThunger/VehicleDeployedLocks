@@ -216,13 +216,18 @@ namespace Oxide.Plugins
             baseLock.SetParent(null);
             NextTick(() =>
             {
-                if (car == null) return;
-
-                var driverModule = FindFirstDriverModule(car);
-                if (driverModule != null)
-                    baseLock.SetParent(driverModule);
-                else
+                if (car == null)
+                {
                     baseLock.Kill();
+                }
+                else
+                {
+                    var driverModule = FindFirstDriverModule(car);
+                    if (driverModule == null)
+                        baseLock.Kill();
+                    else
+                        baseLock.SetParent(driverModule);
+                }
             });
         }
 
