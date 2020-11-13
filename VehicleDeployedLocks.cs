@@ -8,7 +8,7 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("Vehicle Deployed Locks", "WhiteThunder", "0.6.0")]
+    [Info("Vehicle Deployed Locks", "WhiteThunder", "0.7.0")]
     [Description("Allows players to deploy code locks and key locks to vehicles.")]
     internal class VehicleDeployedLocks : CovalencePlugin
     {
@@ -115,11 +115,24 @@ namespace Oxide.Plugins
             CraftCodeLockCooldowns = new CooldownManager(PluginConfig.CraftCooldownSeconds);
         }
 
-        private object CanMountEntity(BasePlayer player, BaseMountable entity) =>
-            CanPlayerInteractWithParentVehicle(player, entity);
+        private object CanMountEntity(BasePlayer player, BaseMountable entity)
+        {
+            // Don't lock taxi modules
+            var carSeat = entity as ModularCarSeat;
+            if (carSeat != null && !carSeat.associatedSeatingModule.DoorsAreLockable)
+                return null;
 
-        private object CanLootEntity(BasePlayer player, StorageContainer container) =>
-            CanPlayerInteractWithParentVehicle(player, container);
+            return CanPlayerInteractWithParentVehicle(player, entity);
+        }
+
+        private object CanLootEntity(BasePlayer player, StorageContainer container)
+        {
+            // Don't lock taxi module shop fronts
+            if (container is ModularVehicleShopFront)
+                return null;
+
+            return CanPlayerInteractWithParentVehicle(player, container);
+        }
 
         private object CanLootEntity(BasePlayer player, ContainerIOEntity container) =>
             CanPlayerInteractWithParentVehicle(player, container);
@@ -171,11 +184,17 @@ namespace Oxide.Plugins
             return null;
         }
 
-        private object CanPlayerInteractWithParentVehicle(BasePlayer player, BaseEntity entity)
+        private object CanSwapToSeat(BasePlayer player, ModularCarSeat carSeat)
         {
-            if (entity == null) return null;
-            return CanPlayerInteractWithVehicle(player, GetParentVehicle(entity));
+            // Don't lock taxi modules
+            if (!carSeat.associatedSeatingModule.DoorsAreLockable)
+                return null;
+
+            return CanPlayerInteractWithParentVehicle(player, carSeat, provideFeedback: false);
         }
+
+        private object CanPlayerInteractWithParentVehicle(BasePlayer player, BaseEntity entity, bool provideFeedback = true) =>
+            CanPlayerInteractWithVehicle(player, GetParentVehicle(entity), provideFeedback);
 
         private object CanPlayerInteractWithVehicle(BasePlayer player, BaseCombatEntity vehicle, bool provideFeedback = true)
         {

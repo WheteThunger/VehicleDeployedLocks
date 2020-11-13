@@ -5,7 +5,6 @@
 - Lock authorization may be shared with the lock owner's team, friends or clanmates based on the plugin configuration, or via compatible sharing plugins. This allows other players to access the vehicle without requiring a key or code, and prevents them from being targetted by turrets on the vehicle.
 - Deploying a lock consumes one from the player inventory, or consumes equivalent resources based on the blueprint price.
 - Free locks for players with permission.
-- (Coming soon) Support for taxi modules.
 
 ### Limitations
 
