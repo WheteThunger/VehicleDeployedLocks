@@ -1,12 +1,13 @@
 ## Features
 
-- Allows players to deploy code locks and key locks to various vehicles using commands.
-- Prevents players without lock authorization from accessing seats, fuel, storage, turrets and other vehicle features. Compatible with most plugins that add containers to vehicles.
+- Allows players to deploy code locks and key locks to various vehicles, the same way locks are deployed to doors and containers (no commands required).
+- Prevents players without lock authorization from accessing seats, fuel, storage, turrets and other vehicle features. Compatible with most plugins that add containers and other attachments to vehicles.
 - Lock authorization may be shared with the lock owner's team, friends or clanmates based on the plugin configuration, or via compatible sharing plugins. This allows other players to access the vehicle without requiring a key or code, and prevents them from being targetted by turrets on the vehicle.
 - Deploying a lock consumes one from the player inventory, or consumes equivalent resources based on the blueprint price.
 - Free locks for players with permission.
+- Compatible with taxi modules.
 
-### Limitations
+### Notes
 
 - Modular cars must have a cockpit module (i.e., driver seat) to receive a lock. The lock will deploy to the front-most cockpit module if there are multiple. If that cockpit is removed, the lock is moved to another cockpit module if present, else destroyed.
 - Modular cars may have a built-in lock at the same time as a deployed lock. This is not recommended, but if this happens, players will need to simultaneously satisfy the rules of the built-in lock and the deployed lock in order to access the car.
@@ -15,8 +16,10 @@
 
 ## Commands
 
-- `vehiclecodelock` (or `vcodelock`, `vlock`) -- Deploy a code lock to the vehicle you are aiming at. You must be within several meters of the vehicle. You must not be building blocked.
-- `vehiclekeylock` (or `vkeylock`) -- Deploy a key lock to the vehicle you are aiming at. You must be within several meters of the vehicle. You must not be building blocked.
+Note: In addition to being able to deploy locks directly, you can also use the following commands if you are close to a vehicle and not building blocked. These are useful if you have one of the free permissions but don't have a lock in your inventory.
+
+- `vehiclecodelock` (or `vcodelock`, `vlock`) -- Deploy a code lock to the vehicle you are aiming at.
+- `vehiclekeylock` (or `vkeylock`) -- Deploy a key lock to the vehicle you are aiming at.
 
 ## Permissions
 

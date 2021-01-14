@@ -13,7 +13,7 @@ namespace Oxide.Plugins
     internal class VehicleDeployedLocks : CovalencePlugin
     {
         #region Fields
-        
+
         [PluginReference]
         private Plugin Clans, Friends;
 
@@ -250,6 +250,50 @@ namespace Oxide.Plugins
             });
         }
 
+        // Allow players to deploy locks directly without any commands.
+        object CanDeployItem(BasePlayer basePlayer, Deployer deployer, uint entityId)
+        {
+            if (basePlayer == null || deployer == null)
+                return null;
+
+            var deployable = deployer.GetDeployable();
+            if (deployable == null)
+                return null;
+
+            var activeItem = basePlayer.GetActiveItem();
+            if (activeItem == null)
+                return null;
+
+            var itemid = activeItem.info.itemid;
+
+            LockType lockType;
+            if (itemid == CodeLockItemId)
+                lockType = LockType.CodeLock;
+            else if (itemid == KeyLockItemId)
+                lockType = LockType.KeyLock;
+            else
+                return null;
+
+            var vehicle = GetVehicleFromEntity(BaseNetworkable.serverEntities.Find(entityId) as BaseEntity, basePlayer);
+            if (vehicle == null)
+                return null;
+
+            string perm = null;
+            Vector3 lockPosition = Vector3.zero;
+
+            if (!IsSupportedVehicle(vehicle, lockType, ref perm, ref lockPosition))
+                return null;
+
+            var player = basePlayer.IPlayer;
+
+            PayType payType;
+            if (!VerifyCanDeploy(player, vehicle, lockType, perm, out payType))
+                return false;
+
+            DeployLockForPlayer(vehicle, lockPosition, lockType, basePlayer, payType);
+            return false;
+        }
+
         #endregion
 
         #region API
@@ -298,16 +342,7 @@ namespace Oxide.Plugins
             }
 
             PayType payType;
-
-            if (!VerifyPermissionToVehicleAndLockType(player, lockType, perm) ||
-                !VerifyVehicleIsNotDead(player, vehicle) ||
-                !VerifyNoOwnershipRestriction(player, vehicle) ||
-                !VerifyCanBuild(player) ||
-                !VerifyVehicleHasNoLock(player, vehicle) ||
-                !VerifyVehicleCanHaveALock(player, vehicle) ||
-                !VerifyPlayerCanDeployLock(player, lockType, out payType) ||
-                (vehicle is BaseVehicle && !VerifyNotMounted(player, vehicle as BaseVehicle)) ||
-                DeployWasBlocked(vehicle, basePlayer, lockType))
+            if (!VerifyCanDeploy(player, vehicle, lockType, perm, out payType))
                 return;
 
             DeployLockForPlayer(vehicle, lockPosition, lockType, basePlayer, payType);
@@ -365,6 +400,22 @@ namespace Oxide.Plugins
             var hookName = lockType == LockType.CodeLock ? "CanDeployVehicleCodeLock" : "CanDeployVehicleKeyLock";
             object hookResult = Interface.CallHook(hookName, vehicle, player);
             return (hookResult is bool && (bool)hookResult == false);
+        }
+
+        private bool VerifyCanDeploy(IPlayer player, BaseCombatEntity vehicle, LockType lockType, string perm, out PayType payType)
+        {
+            var basePlayer = player.Object as BasePlayer;
+            payType = PayType.Item;
+
+            return VerifyPermissionToVehicleAndLockType(player, lockType, perm)
+                && VerifyVehicleIsNotDead(player, vehicle)
+                && VerifyNoOwnershipRestriction(player, vehicle)
+                && VerifyCanBuild(player)
+                && VerifyVehicleHasNoLock(player, vehicle)
+                && VerifyVehicleCanHaveALock(player, vehicle)
+                && VerifyPlayerCanDeployLock(player, lockType, out payType)
+                && (!(vehicle is BaseVehicle) || VerifyNotMounted(player, vehicle as BaseVehicle))
+                && !DeployWasBlocked(vehicle, basePlayer, lockType);
         }
 
         private bool VerifyPermissionToVehicleAndLockType(IPlayer player, LockType lockType, string vehicleSpecificPerm)
@@ -595,7 +646,7 @@ namespace Oxide.Plugins
             if (parentToEntity == null) return null;
 
             var lockPrefab = lockType == LockType.CodeLock ? CodeLockPrefab : KeyLockPrefab;
-            
+
             var baseLock = GameManager.server.CreateEntity(lockPrefab, lockPosition, GetLockRotation(vehicle)) as BaseLock;
             if (baseLock == null) return null;
 
