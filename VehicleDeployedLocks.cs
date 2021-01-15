@@ -286,6 +286,8 @@ namespace Oxide.Plugins
 
             var player = basePlayer.IPlayer;
 
+            // Trick to make sure the replies are in chat instead of console.
+            player.LastCommand = CommandType.Chat;
             PayType payType;
             if (!VerifyCanDeploy(player, vehicle, lockType, perm, out payType))
                 return false;
