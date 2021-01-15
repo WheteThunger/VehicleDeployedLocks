@@ -627,7 +627,14 @@ namespace Oxide.Plugins
             if (payType == PayType.Item)
             {
                 var lockItemId = lockType == LockType.CodeLock ? CodeLockItemId : KeyLockItemId;
-                player.inventory.Take(null, lockItemId, 1);
+
+                // Prefer taking the item they are holding in case they are deploying directly.
+                var heldItem = player.GetActiveItem();
+                if (heldItem != null && heldItem.info.itemid == lockItemId)
+                    heldItem.UseItem(1);
+                else
+                    player.inventory.Take(null, lockItemId, 1);
+
                 player.Command("note.inv", lockItemId, -1);
                 return;
             }
