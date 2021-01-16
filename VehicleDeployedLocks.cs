@@ -57,6 +57,8 @@ namespace Oxide.Plugins
         private const int CodeLockItemId = 1159991980;
         private const int KeyLockItemId = -850982208;
 
+        private const float MaxDeployDistance = 3;
+
         private readonly Vector3 LockPosition_Chinook = new Vector3(-1.175f, 2, 6.5f);
         private readonly Vector3 LockPosition_HotAirBalloon = new Vector3(1.45f, 0.9f, 0);
         private readonly Vector3 LockPosition_Kayak = new Vector3(-0.43f, 0.2f, 0.2f);
@@ -332,7 +334,7 @@ namespace Oxide.Plugins
             if (player.IsServer) return;
 
             var basePlayer = player.Object as BasePlayer;
-            var vehicle = GetVehicleFromEntity(GetLookEntity(basePlayer), basePlayer);
+            var vehicle = GetVehicleFromEntity(GetLookEntity(basePlayer, MaxDeployDistance), basePlayer);
 
             string perm = null;
             Vector3 lockPosition = Vector3.zero;
@@ -505,10 +507,10 @@ namespace Oxide.Plugins
             return false;
         }
 
-        private BaseEntity GetLookEntity(BasePlayer player)
+        private BaseEntity GetLookEntity(BasePlayer player, float maxDistance)
         {
             RaycastHit hit;
-            if (!Physics.Raycast(player.eyes.HeadRay(), out hit, 3)) return null;
+            if (!Physics.Raycast(player.eyes.HeadRay(), out hit, maxDistance, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore)) return null;
             return hit.GetEntity();
         }
 
