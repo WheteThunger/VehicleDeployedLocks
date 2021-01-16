@@ -412,7 +412,7 @@ namespace Oxide.Plugins
             return VerifyPermissionToVehicleAndLockType(player, lockType, perm)
                 && VerifyVehicleIsNotDead(player, vehicle)
                 && VerifyNoOwnershipRestriction(player, vehicle)
-                && VerifyCanBuild(player)
+                && VerifyCanBuild(player, vehicle)
                 && VerifyVehicleHasNoLock(player, vehicle)
                 && VerifyVehicleCanHaveALock(player, vehicle)
                 && VerifyPlayerCanDeployLock(player, lockType, out payType)
@@ -452,9 +452,10 @@ namespace Oxide.Plugins
             return true;
         }
 
-        private bool VerifyCanBuild(IPlayer player)
+        private bool VerifyCanBuild(IPlayer player, BaseCombatEntity vehicle)
         {
-            if ((player.Object as BasePlayer).CanBuild()) return true;
+            var basePlayer = player.Object as BasePlayer;
+            if (basePlayer.CanBuild() && basePlayer.CanBuild(vehicle.WorldSpaceBounds())) return true;
             ReplyToPlayer(player, "Generic.Error.BuildingBlocked");
             return false;
         }
