@@ -98,7 +98,8 @@ As an alternative to the `allvehicles` permission, you can grant permissions by 
   "Deploy.Error.HasLock": "Error: That vehicle already has a lock.",
   "Deploy.Error.InsufficientResources": "Error: Not enough resources to craft a {0}.",
   "Deploy.Error.Mounted": "Error: That vehicle is currently occupied.",
-  "Deploy.Error.ModularCar.NoCockpit": "Error: That car needs a cockpit module to receive a lock."
+  "Deploy.Error.ModularCar.NoCockpit": "Error: That car needs a cockpit module to receive a lock.",
+  "Deploy.Error.Distance": "Error: Too far away."
 }
 ```
 

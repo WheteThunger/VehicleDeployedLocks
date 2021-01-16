@@ -291,7 +291,8 @@ namespace Oxide.Plugins
             // Trick to make sure the replies are in chat instead of console.
             player.LastCommand = CommandType.Chat;
             PayType payType;
-            if (!VerifyCanDeploy(player, vehicle, lockType, perm, out payType))
+            if (!VerifyCanDeploy(player, vehicle, lockType, perm, out payType)
+                || !VerifyDeployDistance(player, vehicle))
                 return false;
 
             DeployLockForPlayer(vehicle, lockPosition, lockType, basePlayer, payType);
@@ -420,6 +421,13 @@ namespace Oxide.Plugins
                 && VerifyPlayerCanDeployLock(player, lockType, out payType)
                 && (!(vehicle is BaseVehicle) || VerifyNotMounted(player, vehicle as BaseVehicle))
                 && !DeployWasBlocked(vehicle, basePlayer, lockType);
+        }
+
+        private bool VerifyDeployDistance(IPlayer player, BaseCombatEntity vehicle)
+        {
+            if (vehicle.Distance(player.Object as BasePlayer) <= MaxDeployDistance) return true;
+            ReplyToPlayer(player, "Deploy.Error.Distance");
+            return false;
         }
 
         private bool VerifyPermissionToVehicleAndLockType(IPlayer player, LockType lockType, string vehicleSpecificPerm)
@@ -992,6 +1000,7 @@ namespace Oxide.Plugins
                 ["Deploy.Error.InsufficientResources"] = "Error: Not enough resources to craft a {0}.",
                 ["Deploy.Error.Mounted"] = "Error: That vehicle is currently occupied.",
                 ["Deploy.Error.ModularCar.NoCockpit"] = "Error: That car needs a cockpit module to receive a lock.",
+                ["Deploy.Error.Distance"] = "Error: Too far away."
             }, this, "en");
         }
 
