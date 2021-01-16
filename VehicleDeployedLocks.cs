@@ -144,8 +144,11 @@ namespace Oxide.Plugins
 
         private object CanLootEntity(BasePlayer player, ModularCarGarage carLift)
         {
-            if (carLift == null) return null;
-            if (PluginConfig.ModularCarSettings.AllowEditingWhileLockedOut || !carLift.PlatformIsOccupied) return null;
+            if (carLift == null
+                || PluginConfig.ModularCarSettings.AllowEditingWhileLockedOut
+                || !carLift.PlatformIsOccupied)
+                return null;
+
             return CanPlayerInteractWithVehicle(player, carLift.carOccupant);
         }
 
@@ -157,7 +160,8 @@ namespace Oxide.Plugins
 
         private object OnSwitchToggle(ElectricSwitch electricSwitch, BasePlayer player)
         {
-            if (electricSwitch == null) return null;
+            if (electricSwitch == null)
+                return null;
 
             var autoTurret = electricSwitch.GetParentEntity() as AutoTurret;
             if (autoTurret != null)
@@ -171,14 +175,17 @@ namespace Oxide.Plugins
 
         private object OnTurretTarget(AutoTurret autoTurret, BasePlayer player)
         {
-            if (autoTurret == null || player == null) return null;
+            if (autoTurret == null || player == null)
+                return null;
 
             var turretParent = autoTurret.GetParentEntity();
             var vehicle = turretParent as BaseVehicle ?? (turretParent as BaseVehicleModule)?.Vehicle;
-            if (vehicle == null) return null;
+            if (vehicle == null)
+                return null;
 
             var baseLock = GetVehicleLock(vehicle);
-            if (baseLock == null) return null;
+            if (baseLock == null)
+                return null;
 
             if (CanPlayerBypassLock(player, baseLock))
                 return false;
@@ -200,10 +207,12 @@ namespace Oxide.Plugins
 
         private object CanPlayerInteractWithVehicle(BasePlayer player, BaseCombatEntity vehicle, bool provideFeedback = true)
         {
-            if (player == null || vehicle == null) return null;
+            if (player == null || vehicle == null)
+                return null;
 
             var baseLock = GetVehicleLock(vehicle);
-            if (baseLock == null || !baseLock.IsLocked()) return null;
+            if (baseLock == null || !baseLock.IsLocked())
+                return null;
 
             if (!CanPlayerBypassLock(player, baseLock))
             {
@@ -226,13 +235,16 @@ namespace Oxide.Plugins
         // If a lock is present, either move the lock to another cockpit or destroy it
         private void OnEntityKill(VehicleModuleSeating seatingModule)
         {
-            if (seatingModule == null || !seatingModule.HasADriverSeat()) return;
+            if (seatingModule == null || !seatingModule.HasADriverSeat())
+                return;
 
             var car = seatingModule.Vehicle as ModularCar;
-            if (car == null) return;
+            if (car == null)
+                return;
 
             var baseLock = seatingModule.GetComponentInChildren<BaseLock>();
-            if (baseLock == null) return;
+            if (baseLock == null)
+                return;
 
             baseLock.SetParent(null);
             NextTick(() =>
@@ -332,7 +344,8 @@ namespace Oxide.Plugins
 
         private void LockCommand(IPlayer player, LockType lockType)
         {
-            if (player.IsServer) return;
+            if (player.IsServer)
+                return;
 
             var basePlayer = player.Object as BasePlayer;
             var vehicle = GetVehicleFromEntity(GetLookEntity(basePlayer, MaxDeployDistance), basePlayer);
@@ -362,11 +375,11 @@ namespace Oxide.Plugins
             string perm = null;
             Vector3 lockPosition = Vector3.zero;
 
-            if (vehicle == null ||
-                !IsSupportedVehicle(vehicle, lockType, ref perm, ref lockPosition) ||
-                vehicle.IsDead() ||
-                GetVehicleLock(vehicle) != null ||
-                !CanVehicleHaveALock(vehicle))
+            if (vehicle == null
+                || !IsSupportedVehicle(vehicle, lockType, ref perm, ref lockPosition)
+                || vehicle.IsDead()
+                || GetVehicleLock(vehicle) != null
+                || !CanVehicleHaveALock(vehicle))
                 return null;
 
             PayType payType;
@@ -375,7 +388,8 @@ namespace Oxide.Plugins
             else if (!VerifyPlayerCanDeployLock(player.IPlayer, lockType, out payType))
                 return null;
 
-            if (DeployWasBlocked(vehicle, player, lockType)) return null;
+            if (DeployWasBlocked(vehicle, player, lockType))
+                return null;
 
             return player != null
                 ? DeployLockForPlayer(vehicle, lockPosition, lockType, player, payType)
@@ -404,7 +418,7 @@ namespace Oxide.Plugins
         {
             var hookName = lockType == LockType.CodeLock ? "CanDeployVehicleCodeLock" : "CanDeployVehicleKeyLock";
             object hookResult = Interface.CallHook(hookName, vehicle, player);
-            return (hookResult is bool && (bool)hookResult == false);
+            return hookResult is bool && (bool)hookResult == false;
         }
 
         private bool VerifyCanDeploy(IPlayer player, BaseCombatEntity vehicle, LockType lockType, string perm, out PayType payType)
@@ -425,7 +439,9 @@ namespace Oxide.Plugins
 
         private bool VerifyDeployDistance(IPlayer player, BaseCombatEntity vehicle)
         {
-            if (vehicle.Distance(player.Object as BasePlayer) <= MaxDeployDistance) return true;
+            if (vehicle.Distance(player.Object as BasePlayer) <= MaxDeployDistance)
+                return true;
+
             ReplyToPlayer(player, "Deploy.Error.Distance");
             return false;
         }
@@ -433,14 +449,18 @@ namespace Oxide.Plugins
         private bool VerifyPermissionToVehicleAndLockType(IPlayer player, LockType lockType, string vehicleSpecificPerm)
         {
             var allVehiclesPerm = lockType == LockType.CodeLock ? Permission_CodeLock_AllVehicles : Permission_KeyLock_AllVehicles;
-            if (vehicleSpecificPerm != null && HasPermissionAny(player, allVehiclesPerm, vehicleSpecificPerm)) return true;
+            if (vehicleSpecificPerm != null && HasPermissionAny(player, allVehiclesPerm, vehicleSpecificPerm))
+                return true;
+
             ReplyToPlayer(player, "Generic.Error.NoPermission");
             return false;
         }
 
         private bool VerifyVehicleIsNotDead(IPlayer player, BaseCombatEntity vehicle)
         {
-            if (!vehicle.IsDead()) return true;
+            if (!vehicle.IsDead())
+                return true;
+
             ReplyToPlayer(player, "Deploy.Error.VehicleDead");
             return false;
         }
@@ -465,21 +485,27 @@ namespace Oxide.Plugins
         private bool VerifyCanBuild(IPlayer player, BaseCombatEntity vehicle)
         {
             var basePlayer = player.Object as BasePlayer;
-            if (basePlayer.CanBuild() && basePlayer.CanBuild(vehicle.WorldSpaceBounds())) return true;
+            if (basePlayer.CanBuild() && basePlayer.CanBuild(vehicle.WorldSpaceBounds()))
+                return true;
+
             ReplyToPlayer(player, "Generic.Error.BuildingBlocked");
             return false;
         }
 
         private bool VerifyVehicleHasNoLock(IPlayer player, BaseCombatEntity vehicle)
         {
-            if (GetVehicleLock(vehicle) == null) return true;
+            if (GetVehicleLock(vehicle) == null)
+                return true;
+
             ReplyToPlayer(player, "Deploy.Error.HasLock");
             return false;
         }
 
         private bool VerifyVehicleCanHaveALock(IPlayer player, BaseCombatEntity vehicle)
         {
-            if (CanVehicleHaveALock(vehicle)) return true;
+            if (CanVehicleHaveALock(vehicle))
+                return true;
+
             ReplyToPlayer(player, "Deploy.Error.ModularCar.NoCockpit");
             return false;
         }
@@ -489,7 +515,8 @@ namespace Oxide.Plugins
 
         private bool VerifyPlayerCanAffordLock(BasePlayer player, LockType lockType, out PayType payType)
         {
-            if (CanPlayerAffordLock(player, lockType, out payType)) return true;
+            if (CanPlayerAffordLock(player, lockType, out payType))
+                return true;
 
             var itemDefinition = GetLockItemDefinition(lockType);
             ChatMessage(player, "Deploy.Error.InsufficientResources", itemDefinition.displayName.translated);
@@ -498,19 +525,24 @@ namespace Oxide.Plugins
 
         private bool VerifyOffCooldown(IPlayer player, LockType lockType, PayType payType)
         {
-            if (payType != PayType.Resources) return true;
+            if (payType != PayType.Resources)
+                return true;
 
             var cooldownManager = lockType == LockType.CodeLock ? CraftCodeLockCooldowns : CraftKeyLockCooldowns;
 
             var secondsRemaining = cooldownManager.GetSecondsRemaining(player.Id);
-            if (secondsRemaining <= 0) return true;
+            if (secondsRemaining <= 0)
+                return true;
+
             ChatMessage(player.Object as BasePlayer, "Generic.Error.Cooldown", Math.Ceiling(secondsRemaining));
             return false;
         }
 
         private bool VerifyNotMounted(IPlayer player, BaseVehicle vehicle)
         {
-            if (!vehicle.AnyMounted()) return true;
+            if (!vehicle.AnyMounted())
+                return true;
+
             ReplyToPlayer(player, "Deploy.Error.Mounted");
             return false;
         }
@@ -518,7 +550,9 @@ namespace Oxide.Plugins
         private BaseEntity GetLookEntity(BasePlayer player, float maxDistance)
         {
             RaycastHit hit;
-            if (!Physics.Raycast(player.eyes.HeadRay(), out hit, maxDistance, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore)) return null;
+            if (!Physics.Raycast(player.eyes.HeadRay(), out hit, maxDistance, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore))
+                return null;
+
             return hit.GetEntity();
         }
 
@@ -535,10 +569,13 @@ namespace Oxide.Plugins
             lockType == LockType.CodeLock ? Permission_CodeLock_Free : Permission_KeyLock_Free;
 
         private bool AllowedNoOwner(BaseCombatEntity vehicle) =>
-            PluginConfig.AllowIfNoOwner || vehicle.OwnerID != 0;
+            PluginConfig.AllowIfNoOwner
+            || vehicle.OwnerID != 0;
 
         private bool AllowedDifferentOwner(IPlayer player, BaseCombatEntity vehicle) =>
-            PluginConfig.AllowIfDifferentOwner || vehicle.OwnerID == 0 || vehicle.OwnerID.ToString() == player.Id;
+            PluginConfig.AllowIfDifferentOwner
+            || vehicle.OwnerID == 0
+            || vehicle.OwnerID.ToString() == player.Id;
 
         private PayType DeterminePayType(IPlayer player, LockType lockType)
         {
@@ -558,7 +595,8 @@ namespace Oxide.Plugins
         private bool CanPlayerAffordLock(BasePlayer player, LockType lockType, out PayType payType)
         {
             payType = DeterminePayType(player.IPlayer, lockType);
-            if (payType != PayType.Resources) return true;
+            if (payType != PayType.Resources)
+                return true;
 
             var itemDefinition = GetLockItemDefinition(lockType);
             return player.inventory.crafting.CanCraft(itemDefinition, 1);
@@ -606,7 +644,8 @@ namespace Oxide.Plugins
         private BaseLock DeployLockForPlayer(BaseEntity vehicle, Vector3 lockPosition, LockType lockType, BasePlayer player, PayType payType)
         {
             var baseLock = DeployLock(vehicle, lockPosition, lockType, player.userID);
-            if (baseLock == null) return null;
+            if (baseLock == null)
+                return null;
 
             // Allow other plugins to detect the code lock being deployed (e.g., auto lock)
             var lockItem = GetPlayerLock(player, lockType);
@@ -663,12 +702,14 @@ namespace Oxide.Plugins
         private BaseLock DeployLock(BaseEntity vehicle, Vector3 lockPosition, LockType lockType, ulong ownerID = 0)
         {
             var parentToEntity = GetLockParent(vehicle);
-            if (parentToEntity == null) return null;
+            if (parentToEntity == null)
+                return null;
 
             var lockPrefab = lockType == LockType.CodeLock ? CodeLockPrefab : KeyLockPrefab;
 
             var baseLock = GameManager.server.CreateEntity(lockPrefab, lockPosition, GetLockRotation(vehicle)) as BaseLock;
-            if (baseLock == null) return null;
+            if (baseLock == null)
+                return null;
 
             if (baseLock is KeyLock)
                 (baseLock as KeyLock).keyCode = UnityEngine.Random.Range(1, 100000);
@@ -832,7 +873,8 @@ namespace Oxide.Plugins
             for (var i = 0; i < hitchTrough.hitchSpots.Length; i++)
             {
                 var hitchSpot = hitchTrough.hitchSpots[i];
-                if (!hitchSpot.IsOccupied()) continue;
+                if (!hitchSpot.IsOccupied())
+                    continue;
 
                 var distance = Vector3.Distance(player.transform.position, hitchSpot.spot.position);
                 if (distance < closestDistance)
@@ -851,44 +893,52 @@ namespace Oxide.Plugins
         private bool CanPlayerBypassLock(BasePlayer player, BaseLock baseLock)
         {
             object hookResult = Interface.CallHook("CanUseLockedEntity", player, baseLock);
-            if (hookResult is bool) return (bool)hookResult;
+            if (hookResult is bool)
+                return (bool)hookResult;
 
-            return IsPlayerAuthorizedToLock(player, baseLock) || IsLockSharedWithPlayer(player, baseLock);
+            return IsPlayerAuthorizedToLock(player, baseLock)
+                || IsLockSharedWithPlayer(player, baseLock);
         }
 
         private bool IsPlayerAuthorizedToLock(BasePlayer player, BaseLock baseLock) =>
             (baseLock as KeyLock)?.HasLockPermission(player) ?? IsPlayerAuthorizedToCodeLock(player.userID, baseLock as CodeLock);
 
         private bool IsPlayerAuthorizedToCodeLock(ulong userID, CodeLock codeLock) =>
-            codeLock.whitelistPlayers.Contains(userID) || codeLock.guestPlayers.Contains(userID);
+            codeLock.whitelistPlayers.Contains(userID)
+            || codeLock.guestPlayers.Contains(userID);
 
         private bool IsLockSharedWithPlayer(BasePlayer player, BaseLock baseLock)
         {
             var ownerID = baseLock.OwnerID;
-            if (ownerID == 0 || ownerID == player.userID) return false;
+            if (ownerID == 0 || ownerID == player.userID)
+                return false;
 
             // In case the owner was locked out for some reason
             var codeLock = baseLock as CodeLock;
-            if (codeLock != null && !IsPlayerAuthorizedToCodeLock(ownerID, codeLock)) return false;
+            if (codeLock != null && !IsPlayerAuthorizedToCodeLock(ownerID, codeLock))
+                return false;
 
             var sharingSettings = PluginConfig.SharingSettings;
             if (sharingSettings.Team && player.currentTeam != 0)
             {
                 var team = RelationshipManager.Instance.FindTeam(player.currentTeam);
-                if (team != null && team.members.Contains(ownerID)) return true;
+                if (team != null && team.members.Contains(ownerID))
+                    return true;
             }
 
             if (sharingSettings.Friends && Friends != null)
             {
                 var friendsResult = Friends.Call("HasFriend", baseLock.OwnerID, player.userID);
-                if (friendsResult is bool && (bool)friendsResult) return true;
+                if (friendsResult is bool && (bool)friendsResult)
+                    return true;
             }
 
             if ((sharingSettings.Clan || sharingSettings.ClanOrAlly) && Clans != null)
             {
                 var clanMethodName = sharingSettings.ClanOrAlly ? "IsMemberOrAlly" : "IsClanMember";
                 var clanResult = Clans.Call(clanMethodName, ownerID.ToString(), player.UserIDString);
-                if (clanResult is bool && (bool)clanResult) return true;
+                if (clanResult is bool && (bool)clanResult)
+                    return true;
             }
 
             return false;
@@ -908,18 +958,15 @@ namespace Oxide.Plugins
                 CooldownDuration = duration;
             }
 
-            public void UpdateLastUsedForPlayer(string userID)
-            {
-                if (CooldownMap.ContainsKey(userID))
-                    CooldownMap[userID] = Time.realtimeSinceStartup;
-                else
-                    CooldownMap.Add(userID, Time.realtimeSinceStartup);
-            }
+            public void UpdateLastUsedForPlayer(string userID) =>
+                CooldownMap[userID] = Time.realtimeSinceStartup;
 
             public float GetSecondsRemaining(string userID)
             {
-                if (!CooldownMap.ContainsKey(userID)) return 0;
-                return CooldownMap[userID] + CooldownDuration - Time.realtimeSinceStartup;
+                float duration;
+                return CooldownMap.TryGetValue(userID, out duration)
+                    ? duration + CooldownDuration - Time.realtimeSinceStartup
+                    : 0;
             }
         }
 
