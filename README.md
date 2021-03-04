@@ -177,7 +177,7 @@ You can replace the `BaseCombatEntity` and `BaseLock` types with more specific o
 
 #### OnItemDeployed
 
-This is an Oxide hook that is normally called when deploying a lock or other deployable. To allow for compatibility with other plugins, this plugin calls this hook whenever a code lock is deployed to a car for a player.
+This is an Oxide hook that is normally called when deploying a lock or other deployable. To allow for compatibility with other plugins, this plugin calls this hook whenever a code lock is deployed to a vehicle for a player.
 
 Note: This is not called when a lock is deployed via the API without specifying a player.
 
