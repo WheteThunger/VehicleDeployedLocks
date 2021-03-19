@@ -39,6 +39,7 @@ As an alternative to the `allvehicles` permission, you can grant permissions by 
 - `vehicledeployedlocks.codelock.ridablehorse`
 - `vehicledeployedlocks.codelock.scraptransport`
 - `vehicledeployedlocks.codelock.sedan`
+- `vehicledeployedlocks.codelock.workcart`
 
 ### Key Locks
 
@@ -56,6 +57,7 @@ As an alternative to the `allvehicles` permission, you can grant permissions by 
 - `vehicledeployedlocks.keylock.rowboat`
 - `vehicledeployedlocks.keylock.scraptransport`
 - `vehicledeployedlocks.keylock.sedan`
+- `vehicledeployedlocks.keylock.workcart`
 
 ## Configuration
 

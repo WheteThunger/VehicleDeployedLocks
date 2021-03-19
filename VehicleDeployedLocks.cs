@@ -8,7 +8,7 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("Vehicle Deployed Locks", "WhiteThunder", "1.0.0")]
+    [Info("Vehicle Deployed Locks", "WhiteThunder", "1.1.0")]
     [Description("Allows players to deploy code locks and key locks to vehicles.")]
     internal class VehicleDeployedLocks : CovalencePlugin
     {
@@ -31,6 +31,7 @@ namespace Oxide.Plugins
         private const string Permission_CodeLock_Rowboat = "vehicledeployedlocks.codelock.rowboat";
         private const string Permission_CodeLock_ScrapHeli = "vehicledeployedlocks.codelock.scraptransport";
         private const string Permission_CodeLock_Sedan = "vehicledeployedlocks.codelock.sedan";
+        private const string Permission_CodeLock_Workcart = "vehicledeployedlocks.codelock.workcart";
 
         private const string Permission_KeyLock_Free = "vehicledeployedlocks.keylock.free";
         private const string Permission_KeyLock_AllVehicles = "vehicledeployedlocks.keylock.allvehicles";
@@ -44,6 +45,7 @@ namespace Oxide.Plugins
         private const string Permission_KeyLock_Rowboat = "vehicledeployedlocks.keylock.rowboat";
         private const string Permission_KeyLock_ScrapHeli = "vehicledeployedlocks.keylock.scraptransport";
         private const string Permission_KeyLock_Sedan = "vehicledeployedlocks.keylock.sedan";
+        private const string Permission_KeyLock_Workcart = "vehicledeployedlocks.keylock.workcart";
 
         private const string CodeLockPrefab = "assets/prefabs/locks/keypad/lock.code.prefab";
         private const string KeyLockPrefab = "assets/prefabs/locks/keylock/lock.key.prefab";
@@ -69,6 +71,7 @@ namespace Oxide.Plugins
         private readonly Vector3 LockPosition_RowBoat = new Vector3(-0.83f, 0.51f, -0.57f);
         private readonly Vector3 LockPosition_ScrapHeli = new Vector3(-1.25f, 1.22f, 1.99f);
         private readonly Vector3 LockPosition_Sedan = new Vector3(-1.09f, 0.79f, 0.5f);
+        private readonly Vector3 LockPosition_Workcart = new Vector3(-0.2f, 2.35f, 2.7f);
 
         private readonly Quaternion LockRotation_Kayak = Quaternion.Euler(0, 90, 90);
         private readonly Quaternion LockRotation_RidableHorse = Quaternion.Euler(0, 95, 90);
@@ -99,6 +102,7 @@ namespace Oxide.Plugins
             permission.RegisterPermission(Permission_CodeLock_Rowboat, this);
             permission.RegisterPermission(Permission_CodeLock_ScrapHeli, this);
             permission.RegisterPermission(Permission_CodeLock_Sedan, this);
+            permission.RegisterPermission(Permission_CodeLock_Workcart, this);
 
             permission.RegisterPermission(Permission_KeyLock_Free, this);
             permission.RegisterPermission(Permission_KeyLock_AllVehicles, this);
@@ -112,6 +116,7 @@ namespace Oxide.Plugins
             permission.RegisterPermission(Permission_KeyLock_Rowboat, this);
             permission.RegisterPermission(Permission_KeyLock_ScrapHeli, this);
             permission.RegisterPermission(Permission_KeyLock_Sedan, this);
+            permission.RegisterPermission(Permission_KeyLock_Workcart, this);
 
             CraftKeyLockCooldowns = new CooldownManager(PluginConfig.CraftCooldownSeconds);
             CraftCodeLockCooldowns = new CooldownManager(PluginConfig.CraftCooldownSeconds);
@@ -836,6 +841,14 @@ namespace Oxide.Plugins
             {
                 perm = lockType == LockType.CodeLock ? Permission_CodeLock_Sedan : Permission_KeyLock_Sedan;
                 lockPosition = LockPosition_Sedan;
+                return true;
+            }
+
+            var workcart = entity as TrainEngine;
+            if (!ReferenceEquals(workcart, null))
+            {
+                perm = lockType == LockType.CodeLock ? Permission_CodeLock_Workcart : Permission_KeyLock_Workcart;
+                lockPosition = LockPosition_Workcart;
                 return true;
             }
 
