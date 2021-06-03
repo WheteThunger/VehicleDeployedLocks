@@ -8,7 +8,7 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("Vehicle Deployed Locks", "WhiteThunder", "1.1.0")]
+    [Info("Vehicle Deployed Locks", "WhiteThunder", "1.1.1")]
     [Description("Allows players to deploy code locks and key locks to vehicles.")]
     internal class VehicleDeployedLocks : CovalencePlugin
     {
@@ -934,7 +934,7 @@ namespace Oxide.Plugins
             var sharingSettings = PluginConfig.SharingSettings;
             if (sharingSettings.Team && player.currentTeam != 0)
             {
-                var team = RelationshipManager.Instance.FindTeam(player.currentTeam);
+                var team = RelationshipManager.ServerInstance.FindTeam(player.currentTeam);
                 if (team != null && team.members.Contains(ownerID))
                     return true;
             }
