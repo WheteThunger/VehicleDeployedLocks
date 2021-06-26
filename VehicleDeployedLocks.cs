@@ -17,8 +17,6 @@ namespace Oxide.Plugins
         [PluginReference]
         private Plugin Clans, Friends;
 
-        private VehicleLocksConfig PluginConfig;
-
         private const string Permission_CodeLock_Free = "vehicledeployedlocks.codelock.free";
         private const string Permission_CodeLock_AllVehicles = "vehicledeployedlocks.codelock.allvehicles";
         private const string Permission_CodeLock_Chinook = "vehicledeployedlocks.codelock.chinook";
@@ -81,11 +79,13 @@ namespace Oxide.Plugins
         private readonly Quaternion LockRotation_RidableHorse = Quaternion.Euler(0, 95, 90);
         private readonly Quaternion LockRotation_MagnetCrane = Quaternion.Euler(0, 0, 90);
 
-        private CooldownManager CraftCodeLockCooldowns;
-        private CooldownManager CraftKeyLockCooldowns;
+        private VehicleLocksConfig _pluginConfig;
 
-        internal enum LockType { CodeLock, KeyLock }
-        internal enum PayType { Item, Resources, Free }
+        private CooldownManager _craftCodeLockCooldowns;
+        private CooldownManager _craftKeyLockCooldowns;
+
+        private enum LockType { CodeLock, KeyLock }
+        private enum PayType { Item, Resources, Free }
 
         #endregion
 
@@ -93,7 +93,7 @@ namespace Oxide.Plugins
 
         private void Init()
         {
-            PluginConfig = Config.ReadObject<VehicleLocksConfig>();
+            _pluginConfig = Config.ReadObject<VehicleLocksConfig>();
 
             permission.RegisterPermission(Permission_CodeLock_Free, this);
             permission.RegisterPermission(Permission_CodeLock_AllVehicles, this);
@@ -125,11 +125,11 @@ namespace Oxide.Plugins
             permission.RegisterPermission(Permission_KeyLock_Sedan, this);
             permission.RegisterPermission(Permission_KeyLock_Workcart, this);
 
-            CraftKeyLockCooldowns = new CooldownManager(PluginConfig.CraftCooldownSeconds);
-            CraftCodeLockCooldowns = new CooldownManager(PluginConfig.CraftCooldownSeconds);
+            _craftKeyLockCooldowns = new CooldownManager(_pluginConfig.CraftCooldownSeconds);
+            _craftCodeLockCooldowns = new CooldownManager(_pluginConfig.CraftCooldownSeconds);
         }
 
-        private object CanMountEntity(BasePlayer player, BaseMountable entity)
+        private bool? CanMountEntity(BasePlayer player, BaseMountable entity)
         {
             // Don't lock taxi modules
             var carSeat = entity as ModularCarSeat;
@@ -139,7 +139,7 @@ namespace Oxide.Plugins
             return CanPlayerInteractWithParentVehicle(player, entity);
         }
 
-        private object CanLootEntity(BasePlayer player, StorageContainer container)
+        private bool? CanLootEntity(BasePlayer player, StorageContainer container)
         {
             // Don't lock taxi module shop fronts
             if (container is ModularVehicleShopFront)
@@ -148,29 +148,29 @@ namespace Oxide.Plugins
             return CanPlayerInteractWithParentVehicle(player, container);
         }
 
-        private object CanLootEntity(BasePlayer player, ContainerIOEntity container) =>
+        private bool? CanLootEntity(BasePlayer player, ContainerIOEntity container) =>
             CanPlayerInteractWithParentVehicle(player, container);
 
-        private object CanLootEntity(BasePlayer player, RidableHorse horse) =>
+        private bool? CanLootEntity(BasePlayer player, RidableHorse horse) =>
             CanPlayerInteractWithVehicle(player, horse);
 
-        private object CanLootEntity(BasePlayer player, ModularCarGarage carLift)
+        private bool? CanLootEntity(BasePlayer player, ModularCarGarage carLift)
         {
             if (carLift == null
-                || PluginConfig.ModularCarSettings.AllowEditingWhileLockedOut
+                || _pluginConfig.ModularCarSettings.AllowEditingWhileLockedOut
                 || !carLift.PlatformIsOccupied)
                 return null;
 
             return CanPlayerInteractWithVehicle(player, carLift.carOccupant);
         }
 
-        private object OnHorseLead(RidableHorse horse, BasePlayer player) =>
+        private bool? OnHorseLead(RidableHorse horse, BasePlayer player) =>
             CanPlayerInteractWithVehicle(player, horse);
 
-        private object OnHotAirBalloonToggle(HotAirBalloon hab, BasePlayer player) =>
+        private bool? OnHotAirBalloonToggle(HotAirBalloon hab, BasePlayer player) =>
             CanPlayerInteractWithVehicle(player, hab);
 
-        private object OnSwitchToggle(ElectricSwitch electricSwitch, BasePlayer player)
+        private bool? OnSwitchToggle(ElectricSwitch electricSwitch, BasePlayer player)
         {
             if (electricSwitch == null)
                 return null;
@@ -182,10 +182,10 @@ namespace Oxide.Plugins
             return null;
         }
 
-        private object OnTurretAuthorize(AutoTurret entity, BasePlayer player) =>
+        private bool? OnTurretAuthorize(AutoTurret entity, BasePlayer player) =>
             CanPlayerInteractWithParentVehicle(player, entity);
 
-        private object OnTurretTarget(AutoTurret autoTurret, BasePlayer player)
+        private bool? OnTurretTarget(AutoTurret autoTurret, BasePlayer player)
         {
             if (autoTurret == null || player == null)
                 return null;
@@ -205,7 +205,7 @@ namespace Oxide.Plugins
             return null;
         }
 
-        private object CanSwapToSeat(BasePlayer player, ModularCarSeat carSeat)
+        private bool? CanSwapToSeat(BasePlayer player, ModularCarSeat carSeat)
         {
             // Don't lock taxi modules
             if (!carSeat.associatedSeatingModule.DoorsAreLockable)
@@ -214,10 +214,10 @@ namespace Oxide.Plugins
             return CanPlayerInteractWithParentVehicle(player, carSeat, provideFeedback: false);
         }
 
-        private object CanPlayerInteractWithParentVehicle(BasePlayer player, BaseEntity entity, bool provideFeedback = true) =>
+        private bool? CanPlayerInteractWithParentVehicle(BasePlayer player, BaseEntity entity, bool provideFeedback = true) =>
             CanPlayerInteractWithVehicle(player, GetParentVehicle(entity), provideFeedback);
 
-        private object CanPlayerInteractWithVehicle(BasePlayer player, BaseCombatEntity vehicle, bool provideFeedback = true)
+        private bool? CanPlayerInteractWithVehicle(BasePlayer player, BaseCombatEntity vehicle, bool provideFeedback = true)
         {
             if (player == null || vehicle == null)
                 return null;
@@ -277,7 +277,7 @@ namespace Oxide.Plugins
         }
 
         // Allow players to deploy locks directly without any commands.
-        object CanDeployItem(BasePlayer basePlayer, Deployer deployer, uint entityId)
+        private bool? CanDeployItem(BasePlayer basePlayer, Deployer deployer, uint entityId)
         {
             if (basePlayer == null || deployer == null)
                 return null;
@@ -417,8 +417,8 @@ namespace Oxide.Plugins
             return vehicle != null &&
                 IsSupportedVehicle(vehicle, lockType, ref perm, ref lockPosition) &&
                 !vehicle.IsDead() &&
-                AllowedNoOwner(vehicle) &&
-                AllowedDifferentOwner(player.IPlayer, vehicle) &&
+                AllowNoOwner(vehicle) &&
+                AllowDifferentOwner(player.IPlayer, vehicle) &&
                 player.CanBuild() &&
                 GetVehicleLock(vehicle) == null &&
                 CanVehicleHaveALock(vehicle) &&
@@ -479,13 +479,13 @@ namespace Oxide.Plugins
 
         private bool VerifyNoOwnershipRestriction(IPlayer player, BaseCombatEntity vehicle)
         {
-            if (!AllowedNoOwner(vehicle))
+            if (!AllowNoOwner(vehicle))
             {
                 ReplyToPlayer(player, "Deploy.Error.NoOwner");
                 return false;
             }
 
-            if (!AllowedDifferentOwner(player, vehicle))
+            if (!AllowDifferentOwner(player, vehicle))
             {
                 ReplyToPlayer(player, "Deploy.Error.DifferentOwner");
                 return false;
@@ -540,7 +540,7 @@ namespace Oxide.Plugins
             if (payType != PayType.Resources)
                 return true;
 
-            var cooldownManager = lockType == LockType.CodeLock ? CraftCodeLockCooldowns : CraftKeyLockCooldowns;
+            var cooldownManager = lockType == LockType.CodeLock ? _craftCodeLockCooldowns : _craftKeyLockCooldowns;
 
             var secondsRemaining = cooldownManager.GetSecondsRemaining(player.Id);
             if (secondsRemaining <= 0)
@@ -580,12 +580,12 @@ namespace Oxide.Plugins
         private string GetFreeLockPermission(LockType lockType) =>
             lockType == LockType.CodeLock ? Permission_CodeLock_Free : Permission_KeyLock_Free;
 
-        private bool AllowedNoOwner(BaseCombatEntity vehicle) =>
-            PluginConfig.AllowIfNoOwner
+        private bool AllowNoOwner(BaseCombatEntity vehicle) =>
+            _pluginConfig.AllowIfNoOwner
             || vehicle.OwnerID != 0;
 
-        private bool AllowedDifferentOwner(IPlayer player, BaseCombatEntity vehicle) =>
-            PluginConfig.AllowIfDifferentOwner
+        private bool AllowDifferentOwner(IPlayer player, BaseCombatEntity vehicle) =>
+            _pluginConfig.AllowIfDifferentOwner
             || vehicle.OwnerID == 0
             || vehicle.OwnerID.ToString() == player.Id;
 
@@ -706,7 +706,7 @@ namespace Oxide.Plugins
                 player.inventory.Take(null, ingredient.itemid, (int)ingredient.amount);
                 player.Command("note.inv", ingredient.itemid, -ingredient.amount);
 
-                var cooldownManager = lockType == LockType.CodeLock ? CraftCodeLockCooldowns : CraftKeyLockCooldowns;
+                var cooldownManager = lockType == LockType.CodeLock ? _craftCodeLockCooldowns : _craftKeyLockCooldowns;
                 cooldownManager.UpdateLastUsedForPlayer(player.UserIDString);
             }
         }
@@ -952,7 +952,7 @@ namespace Oxide.Plugins
             if (codeLock != null && !IsPlayerAuthorizedToCodeLock(ownerID, codeLock))
                 return false;
 
-            var sharingSettings = PluginConfig.SharingSettings;
+            var sharingSettings = _pluginConfig.SharingSettings;
             if (sharingSettings.Team && player.currentTeam != 0)
             {
                 var team = RelationshipManager.ServerInstance.FindTeam(player.currentTeam);
