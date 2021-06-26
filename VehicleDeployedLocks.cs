@@ -24,6 +24,7 @@ namespace Oxide.Plugins
         private const string Permission_CodeLock_Chinook = "vehicledeployedlocks.codelock.chinook";
         private const string Permission_CodeLock_HotAirBalloon = "vehicledeployedlocks.codelock.hotairballoon";
         private const string Permission_CodeLock_Kayak = "vehicledeployedlocks.codelock.kayak";
+        private const string Permission_CodeLock_MagnetCrane = "vehicledeployedlocks.codelock.magnetcrane";
         private const string Permission_CodeLock_MiniCopter = "vehicledeployedlocks.codelock.minicopter";
         private const string Permission_CodeLock_ModularCar = "vehicledeployedlocks.codelock.modularcar";
         private const string Permission_CodeLock_RHIB = "vehicledeployedlocks.codelock.rhib";
@@ -38,6 +39,7 @@ namespace Oxide.Plugins
         private const string Permission_KeyLock_Chinook = "vehicledeployedlocks.keylock.chinook";
         private const string Permission_KeyLock_HotAirBalloon = "vehicledeployedlocks.keylock.hotairballoon";
         private const string Permission_KeyLock_Kayak = "vehicledeployedlocks.keylock.kayak";
+        private const string Permission_KeyLock_MagnetCrane = "vehicledeployedlocks.keylock.magnetcrane";
         private const string Permission_KeyLock_MiniCopter = "vehicledeployedlocks.keylock.minicopter";
         private const string Permission_KeyLock_ModularCar = "vehicledeployedlocks.keylock.modularcar";
         private const string Permission_KeyLock_RHIB = "vehicledeployedlocks.keylock.rhib";
@@ -55,6 +57,7 @@ namespace Oxide.Plugins
         private const string Prefab_CodeLock_UnlockEffect = "assets/prefabs/locks/keypad/effects/lock.code.unlock.prefab";
 
         private const string RidableHorseParentBone = "Horse_RootBone";
+        private const string MagnetCraneParentBone = "Top";
 
         private const int CodeLockItemId = 1159991980;
         private const int KeyLockItemId = -850982208;
@@ -72,9 +75,11 @@ namespace Oxide.Plugins
         private readonly Vector3 LockPosition_ScrapHeli = new Vector3(-1.25f, 1.22f, 1.99f);
         private readonly Vector3 LockPosition_Sedan = new Vector3(-1.09f, 0.79f, 0.5f);
         private readonly Vector3 LockPosition_Workcart = new Vector3(-0.2f, 2.35f, 2.7f);
+        private readonly Vector3 LockPosition_MagnetCrane = new Vector3(-1.735f, -1.445f, 0.79f);
 
         private readonly Quaternion LockRotation_Kayak = Quaternion.Euler(0, 90, 90);
         private readonly Quaternion LockRotation_RidableHorse = Quaternion.Euler(0, 95, 90);
+        private readonly Quaternion LockRotation_MagnetCrane = Quaternion.Euler(0, 0, 90);
 
         private CooldownManager CraftCodeLockCooldowns;
         private CooldownManager CraftKeyLockCooldowns;
@@ -95,6 +100,7 @@ namespace Oxide.Plugins
             permission.RegisterPermission(Permission_CodeLock_Chinook, this);
             permission.RegisterPermission(Permission_CodeLock_HotAirBalloon, this);
             permission.RegisterPermission(Permission_CodeLock_Kayak, this);
+            permission.RegisterPermission(Permission_CodeLock_MagnetCrane, this);
             permission.RegisterPermission(Permission_CodeLock_MiniCopter, this);
             permission.RegisterPermission(Permission_CodeLock_ModularCar, this);
             permission.RegisterPermission(Permission_CodeLock_RHIB, this);
@@ -109,6 +115,7 @@ namespace Oxide.Plugins
             permission.RegisterPermission(Permission_KeyLock_Chinook, this);
             permission.RegisterPermission(Permission_KeyLock_HotAirBalloon, this);
             permission.RegisterPermission(Permission_KeyLock_Kayak, this);
+            permission.RegisterPermission(Permission_KeyLock_MagnetCrane, this);
             permission.RegisterPermission(Permission_KeyLock_MiniCopter, this);
             permission.RegisterPermission(Permission_KeyLock_ModularCar, this);
             permission.RegisterPermission(Permission_KeyLock_RHIB, this);
@@ -749,6 +756,9 @@ namespace Oxide.Plugins
             if (entity is Kayak)
                 return LockRotation_Kayak;
 
+            if (entity is BaseCrane)
+                return LockRotation_MagnetCrane;
+
             return Quaternion.identity;
         }
 
@@ -756,6 +766,9 @@ namespace Oxide.Plugins
         {
             if (entity is RidableHorse)
                 return RidableHorseParentBone;
+
+            if (entity is BaseCrane)
+                return MagnetCraneParentBone;
 
             return null;
         }
@@ -849,6 +862,14 @@ namespace Oxide.Plugins
             {
                 perm = lockType == LockType.CodeLock ? Permission_CodeLock_Workcart : Permission_KeyLock_Workcart;
                 lockPosition = LockPosition_Workcart;
+                return true;
+            }
+
+            var magnetCrane = entity as BaseCrane;
+            if (!ReferenceEquals(magnetCrane, null))
+            {
+                perm = lockType == LockType.CodeLock ? Permission_CodeLock_MagnetCrane : Permission_KeyLock_MagnetCrane;
+                lockPosition = LockPosition_MagnetCrane;
                 return true;
             }
 

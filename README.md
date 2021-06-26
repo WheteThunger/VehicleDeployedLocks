@@ -32,6 +32,7 @@ As an alternative to the `allvehicles` permission, you can grant permissions by 
 - `vehicledeployedlocks.codelock.chinook`
 - `vehicledeployedlocks.codelock.hotairballoon`
 - `vehicledeployedlocks.codelock.kayak`
+- `vehicledeployedlocks.codelock.magnetcrane`
 - `vehicledeployedlocks.codelock.minicopter`
 - `vehicledeployedlocks.codelock.modularcar`
 - `vehicledeployedlocks.codelock.rowboat`
@@ -50,6 +51,7 @@ As an alternative to the `allvehicles` permission, you can grant permissions by 
 - `vehicledeployedlocks.keylock.chinook`
 - `vehicledeployedlocks.keylock.hotairballoon`
 - `vehicledeployedlocks.keylock.kayak`
+- `vehicledeployedlocks.keylock.magnetcrane`
 - `vehicledeployedlocks.keylock.minicopter`
 - `vehicledeployedlocks.keylock.modularcar`
 - `vehicledeployedlocks.keylock.rhib`
