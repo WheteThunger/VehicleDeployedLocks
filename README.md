@@ -161,8 +161,8 @@ If `provideFeedback` is true, the lock will play an access granted or denied sou
 - Returning `null` will result in the default behavior.
 
 ```csharp
-object CanDeployVehicleCodeLock(BaseCombatEntity vehicle, BasePlayer player)
-object CanDeployVehicleKeyLock(BaseCombatEntity vehicle, BasePlayer player)
+bool? CanDeployVehicleCodeLock(BaseCombatEntity vehicle, BasePlayer player)
+bool? CanDeployVehicleKeyLock(BaseCombatEntity vehicle, BasePlayer player)
 ```
 
 You can replace the `BaseCombatEntity` type with a more specific one to only run your hook method for specific vehicle types.
@@ -181,19 +181,11 @@ You can replace the `BaseCombatEntity` and `BaseLock` types with more specific o
 
 This is an Oxide hook that is normally called when deploying a lock or other deployable. To allow for compatibility with other plugins, this plugin calls this hook whenever a code lock is deployed to a vehicle for a player.
 
-Note: This is not called when a lock is deployed via the API without specifying a player.
-
 ```csharp
-void OnItemDeployed(Deployer deployer, BaseEntity entity)
-{
-    // Example: Check if a code lock was deployed to a car
-    var car = entity as ModularCar;
-    if (car == null) return;
-    var codeLock = car.GetSlot(BaseEntity.Slot.Lock) as CodeLock;
-    if (codeLock != null)
-        Puts("A code lock was deployed to a car!");
-}
+void OnItemDeployed(Deployer deployer, BaseCombatEntity entity, BaseLock baseLock)
 ```
+
+Note: This is not called when a lock is deployed via the API without specifying a player. For that, use `OnVehicleLockDeployed`.
 
 #### CanUseLockedEntity
 

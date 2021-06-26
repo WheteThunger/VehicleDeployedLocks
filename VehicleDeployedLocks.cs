@@ -655,7 +655,7 @@ namespace Oxide.Plugins
             // Allow other plugins to detect the code lock being deployed (e.g., auto lock)
             var lockItem = GetPlayerLock(player, lockType);
             if (lockItem != null)
-                Interface.CallHook("OnItemDeployed", lockItem.GetHeldEntity(), vehicle);
+                Interface.CallHook("OnItemDeployed", lockItem.GetHeldEntity(), vehicle, baseLock);
             else
             {
                 // Temporarily increase the player inventory capacity to ensure there is enough space
@@ -663,7 +663,7 @@ namespace Oxide.Plugins
                 var temporaryLockItem = ItemManager.CreateByItemID(CodeLockItemId);
                 if (player.inventory.GiveItem(temporaryLockItem))
                 {
-                    Interface.CallHook("OnItemDeployed", temporaryLockItem.GetHeldEntity(), vehicle);
+                    Interface.CallHook("OnItemDeployed", temporaryLockItem.GetHeldEntity(), vehicle, baseLock);
                     temporaryLockItem.RemoveFromContainer();
                 }
                 temporaryLockItem.Remove();
