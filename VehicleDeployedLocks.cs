@@ -162,35 +162,6 @@ namespace Oxide.Plugins
             return CanPlayerInteractWithParentVehicle(player, carSeat, provideFeedback: false);
         }
 
-        private bool? CanPlayerInteractWithParentVehicle(BasePlayer player, BaseEntity entity, bool provideFeedback = true) =>
-            CanPlayerInteractWithVehicle(player, GetParentVehicle(entity), provideFeedback);
-
-        private bool? CanPlayerInteractWithVehicle(BasePlayer player, BaseEntity vehicle, bool provideFeedback = true)
-        {
-            if (player == null || vehicle == null)
-                return null;
-
-            var baseLock = GetVehicleLock(vehicle);
-            if (baseLock == null || !baseLock.IsLocked())
-                return null;
-
-            if (!CanPlayerBypassLock(player, baseLock))
-            {
-                if (provideFeedback)
-                {
-                    Effect.server.Run(Prefab_CodeLock_DeniedEffect, baseLock, 0, Vector3.zero, Vector3.forward);
-                    ChatMessage(player, "Generic.Error.VehicleLocked");
-                }
-
-                return false;
-            }
-
-            if (provideFeedback && baseLock.IsLocked())
-                Effect.server.Run(Prefab_CodeLock_UnlockEffect, baseLock, 0, Vector3.zero, Vector3.forward);
-
-            return null;
-        }
-
         // Handle the case where a cockpit is removed but the car remains
         // If a lock is present, either move the lock to another cockpit or destroy it
         private void OnEntityKill(VehicleModuleSeating seatingModule)
@@ -344,6 +315,380 @@ namespace Oxide.Plugins
 
         #endregion
 
+        #region Helper Methods - General
+
+        private static bool TryGet<T>(T input, out T output)
+        {
+            output = input;
+            return input != null;
+        }
+
+        private static bool HasPermissionAny(IPlayer player, params string[] permissionNames)
+        {
+            foreach (var perm in permissionNames)
+                if (player.HasPermission(perm))
+                    return true;
+
+            return false;
+        }
+
+        private static BaseLock GetVehicleLock(BaseEntity vehicle) =>
+            vehicle.GetSlot(BaseEntity.Slot.Lock) as BaseLock;
+
+        #endregion
+
+        #region Helper Methods - Lock Authorization
+
+        private bool IsPlayerAuthorizedToCodeLock(ulong userID, CodeLock codeLock) =>
+            codeLock.whitelistPlayers.Contains(userID)
+            || codeLock.guestPlayers.Contains(userID);
+
+        private bool IsPlayerAuthorizedToLock(BasePlayer player, BaseLock baseLock) =>
+            (baseLock as KeyLock)?.HasLockPermission(player) ?? IsPlayerAuthorizedToCodeLock(player.userID, baseLock as CodeLock);
+
+        private bool IsLockSharedWithPlayer(BasePlayer player, BaseLock baseLock)
+        {
+            var ownerID = baseLock.OwnerID;
+            if (ownerID == 0 || ownerID == player.userID)
+                return false;
+
+            // In case the owner was locked out for some reason
+            var codeLock = baseLock as CodeLock;
+            if (codeLock != null && !IsPlayerAuthorizedToCodeLock(ownerID, codeLock))
+                return false;
+
+            var sharingSettings = _pluginConfig.SharingSettings;
+            if (sharingSettings.Team && player.currentTeam != 0)
+            {
+                var team = RelationshipManager.ServerInstance.FindTeam(player.currentTeam);
+                if (team != null && team.members.Contains(ownerID))
+                    return true;
+            }
+
+            if (sharingSettings.Friends && Friends != null)
+            {
+                var friendsResult = Friends.Call("HasFriend", baseLock.OwnerID, player.userID);
+                if (friendsResult is bool && (bool)friendsResult)
+                    return true;
+            }
+
+            if ((sharingSettings.Clan || sharingSettings.ClanOrAlly) && Clans != null)
+            {
+                var clanMethodName = sharingSettings.ClanOrAlly ? "IsMemberOrAlly" : "IsClanMember";
+                var clanResult = Clans.Call(clanMethodName, ownerID.ToString(), player.UserIDString);
+                if (clanResult is bool && (bool)clanResult)
+                    return true;
+            }
+
+            return false;
+        }
+
+        private bool CanPlayerBypassLock(BasePlayer player, BaseLock baseLock)
+        {
+            object hookResult = Interface.CallHook("CanUseLockedEntity", player, baseLock);
+            if (hookResult is bool)
+                return (bool)hookResult;
+
+            return IsPlayerAuthorizedToLock(player, baseLock)
+                || IsLockSharedWithPlayer(player, baseLock);
+        }
+
+        private bool? CanPlayerInteractWithVehicle(BasePlayer player, BaseEntity vehicle, bool provideFeedback = true)
+        {
+            if (player == null || vehicle == null)
+                return null;
+
+            var baseLock = GetVehicleLock(vehicle);
+            if (baseLock == null || !baseLock.IsLocked())
+                return null;
+
+            if (!CanPlayerBypassLock(player, baseLock))
+            {
+                if (provideFeedback)
+                {
+                    Effect.server.Run(Prefab_CodeLock_DeniedEffect, baseLock, 0, Vector3.zero, Vector3.forward);
+                    ChatMessage(player, "Generic.Error.VehicleLocked");
+                }
+
+                return false;
+            }
+
+            if (provideFeedback && baseLock.IsLocked())
+                Effect.server.Run(Prefab_CodeLock_UnlockEffect, baseLock, 0, Vector3.zero, Vector3.forward);
+
+            return null;
+        }
+
+        private BaseEntity GetParentVehicle(BaseEntity entity)
+        {
+            var parent = entity.GetParentEntity();
+            if (parent == null)
+                return null;
+
+            if (parent is HotAirBalloon || parent is BaseVehicle)
+                return parent;
+
+            var parentModule = parent as BaseVehicleModule;
+            if (parentModule != null)
+                return parentModule.Vehicle;
+
+            foreach (var vehicleConfig in _customVehicleTypes.Values)
+            {
+                var lockParent = vehicleConfig.DetermineLockParent(entity);
+                if (lockParent != null)
+                    return lockParent;
+            }
+
+            return null;
+        }
+
+        private bool? CanPlayerInteractWithParentVehicle(BasePlayer player, BaseEntity entity, bool provideFeedback = true) =>
+            CanPlayerInteractWithVehicle(player, GetParentVehicle(entity), provideFeedback);
+
+        #endregion
+
+        #region Helper Methods - Deploying Locks
+
+        private static bool DeployWasBlocked(BaseEntity vehicle, BasePlayer player, LockInfo lockInfo)
+        {
+            object hookResult = Interface.CallHook(lockInfo.PreHookName, vehicle, player);
+            return hookResult is bool && (bool)hookResult == false;
+        }
+
+        private static BaseEntity GetLookEntity(BasePlayer player, float maxDistance)
+        {
+            RaycastHit hit;
+            if (!Physics.Raycast(player.eyes.HeadRay(), out hit, maxDistance, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore))
+                return null;
+
+            return hit.GetEntity();
+        }
+
+        private static bool IsDead(BaseEntity entity) =>
+            (entity as BaseCombatEntity)?.IsDead() ?? false;
+
+        private static VehicleModuleSeating FindFirstDriverModule(ModularCar car)
+        {
+            for (int socketIndex = 0; socketIndex < car.TotalSockets; socketIndex++)
+            {
+                BaseVehicleModule module;
+                if (car.TryGetModuleAt(socketIndex, out module))
+                {
+                    var seatingModule = module as VehicleModuleSeating;
+                    if (seatingModule != null && seatingModule.HasADriverSeat())
+                        return seatingModule;
+                }
+            }
+            return null;
+        }
+
+        private static bool CanCarHaveLock(ModularCar car) =>
+            FindFirstDriverModule(car) != null;
+
+        private static bool CanVehicleHaveALock(BaseEntity vehicle)
+        {
+            // Only modular cars have restrictions
+            var car = vehicle as ModularCar;
+            return car == null || CanCarHaveLock(car);
+        }
+
+        private static Item GetPlayerLockItem(BasePlayer player, LockInfo lockInfo) =>
+            player.inventory.FindItemID(lockInfo.ItemId);
+
+        private static PayType DeterminePayType(IPlayer player, LockInfo lockInfo)
+        {
+            if (player.HasPermission(lockInfo.PermissionFree))
+                return PayType.Free;
+
+            return GetPlayerLockItem(player.Object as BasePlayer, lockInfo) != null
+                ? PayType.Item
+                : PayType.Resources;
+        }
+
+        private static bool CanPlayerAffordLock(BasePlayer player, LockInfo lockInfo, out PayType payType)
+        {
+            payType = DeterminePayType(player.IPlayer, lockInfo);
+            if (payType != PayType.Resources)
+                return true;
+
+            return player.inventory.crafting.CanCraft(lockInfo.ItemDefinition, 1);
+        }
+
+        private static RidableHorse GetClosestHorse(HitchTrough hitchTrough, BasePlayer player)
+        {
+            var closestDistance = 1000f;
+            RidableHorse closestHorse = null;
+
+            for (var i = 0; i < hitchTrough.hitchSpots.Length; i++)
+            {
+                var hitchSpot = hitchTrough.hitchSpots[i];
+                if (!hitchSpot.IsOccupied())
+                    continue;
+
+                var distance = Vector3.Distance(player.transform.position, hitchSpot.spot.position);
+                if (distance < closestDistance)
+                {
+                    closestDistance = distance;
+                    closestHorse = hitchSpot.horse.Get(serverside: true) as RidableHorse;
+                }
+            }
+
+            return closestHorse;
+        }
+
+        private static BaseEntity GetVehicleFromEntity(BaseEntity entity, BasePlayer basePlayer)
+        {
+            if (entity == null)
+                return null;
+
+            var module = entity as BaseVehicleModule;
+            if (module != null)
+                return module.Vehicle;
+
+            var carLift = entity as ModularCarGarage;
+            if (!ReferenceEquals(carLift, null))
+                return carLift.carOccupant;
+
+            var hitchTrough = entity as HitchTrough;
+            if (!ReferenceEquals(hitchTrough, null))
+                return GetClosestHorse(hitchTrough, basePlayer);
+
+            return entity;
+        }
+
+        private bool AllowNoOwner(BaseEntity vehicle) =>
+            _pluginConfig.AllowIfNoOwner
+            || vehicle.OwnerID != 0;
+
+        private bool AllowDifferentOwner(IPlayer player, BaseEntity vehicle) =>
+            _pluginConfig.AllowIfDifferentOwner
+            || vehicle.OwnerID == 0
+            || vehicle.OwnerID.ToString() == player.Id;
+
+        private void MaybeChargePlayerForLock(BasePlayer player, LockInfo lockInfo, PayType payType)
+        {
+            if (payType == PayType.Free)
+                return;
+
+            if (payType == PayType.Item)
+            {
+                // Prefer taking the item they are holding in case they are deploying directly.
+                var heldItem = player.GetActiveItem();
+                if (heldItem != null && heldItem.info.itemid == lockInfo.ItemId)
+                    heldItem.UseItem(1);
+                else
+                    player.inventory.Take(null, lockInfo.ItemId, 1);
+
+                player.Command("note.inv", lockInfo.ItemId, -1);
+                return;
+            }
+
+            foreach (var ingredient in lockInfo.Blueprint.ingredients)
+            {
+                player.inventory.Take(null, ingredient.itemid, (int)ingredient.amount);
+                player.Command("note.inv", ingredient.itemid, -ingredient.amount);
+                GetCooldownManager(lockInfo).UpdateLastUsedForPlayer(player.UserIDString);
+            }
+        }
+
+        private BaseLock DeployLock(BaseEntity vehicle, VehicleInfo vehicleInfo, LockInfo lockInfo, ulong ownerID = 0)
+        {
+            var parentToEntity = vehicleInfo.DetermineLockParent(vehicle);
+            if (parentToEntity == null)
+                return null;
+
+            var baseLock = GameManager.server.CreateEntity(lockInfo.Prefab, vehicleInfo.LockPosition, vehicleInfo.LockRotation) as BaseLock;
+            if (baseLock == null)
+                return null;
+
+            if (baseLock is KeyLock)
+                (baseLock as KeyLock).keyCode = UnityEngine.Random.Range(1, 100000);
+
+            if (ownerID != 0)
+                baseLock.OwnerID = ownerID;
+
+            baseLock.SetParent(parentToEntity, vehicleInfo.ParentBone);
+            baseLock.Spawn();
+            vehicle.SetSlot(BaseEntity.Slot.Lock, baseLock);
+
+            Effect.server.Run(Prefab_CodeLock_DeployedEffect, baseLock.transform.position);
+            Interface.CallHook("OnVehicleLockDeployed", vehicle, baseLock);
+
+            return baseLock;
+        }
+
+        private BaseLock DeployLockForPlayer(BaseEntity vehicle, VehicleInfo vehicleInfo, LockInfo lockInfo, BasePlayer player, PayType payType)
+        {
+            var baseLock = DeployLock(vehicle, vehicleInfo, lockInfo, player.userID);
+            if (baseLock == null)
+                return null;
+
+            // Allow other plugins to detect the code lock being deployed (e.g., auto lock)
+            var lockItem = GetPlayerLockItem(player, lockInfo);
+            if (lockItem != null)
+            {
+                Interface.CallHook("OnItemDeployed", lockItem.GetHeldEntity(), vehicle, baseLock);
+            }
+            else
+            {
+                // Temporarily increase the player inventory capacity to ensure there is enough space
+                player.inventory.containerMain.capacity++;
+                var temporaryLockItem = ItemManager.CreateByItemID(lockInfo.ItemId);
+                if (player.inventory.GiveItem(temporaryLockItem))
+                {
+                    Interface.CallHook("OnItemDeployed", temporaryLockItem.GetHeldEntity(), vehicle, baseLock);
+                    temporaryLockItem.RemoveFromContainer();
+                }
+                temporaryLockItem.Remove();
+                player.inventory.containerMain.capacity--;
+            }
+
+            MaybeChargePlayerForLock(player, lockInfo, payType);
+            return baseLock;
+        }
+
+        private BaseLock DeployLockForAPI(BaseEntity vehicle, BasePlayer player, LockInfo lockInfo, bool isFree)
+        {
+            if (vehicle == null || IsDead(vehicle))
+                return null;
+
+            var vehicleInfo = GetVehicleInfo(vehicle);
+            if (vehicleInfo == null
+                || GetVehicleLock(vehicle) != null
+                || !CanVehicleHaveALock(vehicle))
+                return null;
+
+            PayType payType;
+            if (isFree)
+                payType = PayType.Free;
+            else if (!VerifyPlayerCanDeployLock(player.IPlayer, lockInfo, out payType))
+                return null;
+
+            if (DeployWasBlocked(vehicle, player, lockInfo))
+                return null;
+
+            return player != null
+                ? DeployLockForPlayer(vehicle, vehicleInfo, lockInfo, player, payType)
+                : DeployLock(vehicle, vehicleInfo, lockInfo);
+        }
+
+        private bool CanPlayerDeployLockForAPI(BasePlayer player, BaseEntity vehicle, LockInfo lockInfo)
+        {
+            PayType payType;
+            return vehicle != null
+                && !IsDead(vehicle)
+                && GetVehicleInfo(vehicle) != null
+                && AllowNoOwner(vehicle)
+                && AllowDifferentOwner(player.IPlayer, vehicle)
+                && player.CanBuild()
+                && GetVehicleLock(vehicle) == null
+                && CanVehicleHaveALock(vehicle)
+                && CanPlayerAffordLock(player, lockInfo, out payType)
+                && !DeployWasBlocked(vehicle, player, lockInfo);
+        }
+
+        #endregion
+
         #region Helper Methods - Command Checks
 
         private bool VerifyCanDeploy(IPlayer player, BaseEntity vehicle, VehicleInfo vehicleInfo, LockInfo lockInfo, out PayType payType)
@@ -438,9 +783,6 @@ namespace Oxide.Plugins
             return false;
         }
 
-        private bool VerifyPlayerCanDeployLock(IPlayer player, LockInfo lockInfo, out PayType payType) =>
-            VerifyPlayerCanAffordLock(player.Object as BasePlayer, lockInfo, out payType) && VerifyOffCooldown(player, lockInfo, payType);
-
         private bool VerifyPlayerCanAffordLock(BasePlayer player, LockInfo lockInfo, out PayType payType)
         {
             if (CanPlayerAffordLock(player, lockInfo, out payType))
@@ -463,6 +805,9 @@ namespace Oxide.Plugins
             return false;
         }
 
+        private bool VerifyPlayerCanDeployLock(IPlayer player, LockInfo lockInfo, out PayType payType) =>
+            VerifyPlayerCanAffordLock(player.Object as BasePlayer, lockInfo, out payType) && VerifyOffCooldown(player, lockInfo, payType);
+
         private bool VerifyNotMounted(IPlayer player, BaseEntity vehicle, VehicleInfo vehicleInfo)
         {
             if (!vehicleInfo.IsMounted(vehicle))
@@ -471,429 +816,6 @@ namespace Oxide.Plugins
             ReplyToPlayer(player, "Deploy.Error.Mounted");
             return false;
         }
-
-        #endregion
-
-        #region Helper Methods
-
-        private bool IsDead(BaseEntity entity) => (entity as BaseCombatEntity)?.IsDead() ?? false;
-
-        private BaseLock DeployLockForAPI(BaseEntity vehicle, BasePlayer player, LockInfo lockInfo, bool isFree)
-        {
-            if (vehicle == null || IsDead(vehicle))
-                return null;
-
-            var vehicleInfo = GetVehicleInfo(vehicle);
-            if (vehicleInfo == null
-                || GetVehicleLock(vehicle) != null
-                || !CanVehicleHaveALock(vehicle))
-                return null;
-
-            PayType payType;
-            if (isFree)
-                payType = PayType.Free;
-            else if (!VerifyPlayerCanDeployLock(player.IPlayer, lockInfo, out payType))
-                return null;
-
-            if (DeployWasBlocked(vehicle, player, lockInfo))
-                return null;
-
-            return player != null
-                ? DeployLockForPlayer(vehicle, vehicleInfo, lockInfo, player, payType)
-                : DeployLock(vehicle, vehicleInfo, lockInfo);
-        }
-
-        private bool CanPlayerDeployLockForAPI(BasePlayer player, BaseEntity vehicle, LockInfo lockInfo)
-        {
-            PayType payType;
-            return vehicle != null
-                && !IsDead(vehicle)
-                && GetVehicleInfo(vehicle) != null
-                && AllowNoOwner(vehicle)
-                && AllowDifferentOwner(player.IPlayer, vehicle)
-                && player.CanBuild()
-                && GetVehicleLock(vehicle) == null
-                && CanVehicleHaveALock(vehicle)
-                && CanPlayerAffordLock(player, lockInfo, out payType)
-                && !DeployWasBlocked(vehicle, player, lockInfo);
-        }
-
-        private bool DeployWasBlocked(BaseEntity vehicle, BasePlayer player, LockInfo lockInfo)
-        {
-            object hookResult = Interface.CallHook(lockInfo.PreHookName, vehicle, player);
-            return hookResult is bool && (bool)hookResult == false;
-        }
-
-        private CooldownManager GetCooldownManager(LockInfo lockInfo) =>
-            lockInfo == LockInfo_CodeLock
-                ? _craftCodeLockCooldowns
-                : _craftKeyLockCooldowns;
-
-        private BaseEntity GetLookEntity(BasePlayer player, float maxDistance)
-        {
-            RaycastHit hit;
-            if (!Physics.Raycast(player.eyes.HeadRay(), out hit, maxDistance, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore))
-                return null;
-
-            return hit.GetEntity();
-        }
-
-        private bool HasPermissionAny(IPlayer player, params string[] permissionNames)
-        {
-            foreach (var perm in permissionNames)
-                if (player.HasPermission(perm))
-                    return true;
-
-            return false;
-        }
-
-        private bool AllowNoOwner(BaseEntity vehicle) =>
-            _pluginConfig.AllowIfNoOwner
-            || vehicle.OwnerID != 0;
-
-        private bool AllowDifferentOwner(IPlayer player, BaseEntity vehicle) =>
-            _pluginConfig.AllowIfDifferentOwner
-            || vehicle.OwnerID == 0
-            || vehicle.OwnerID.ToString() == player.Id;
-
-        private PayType DeterminePayType(IPlayer player, LockInfo lockInfo)
-        {
-            if (player.HasPermission(lockInfo.PermissionFree))
-                return PayType.Free;
-
-            return GetPlayerLock(player.Object as BasePlayer, lockInfo) != null ? PayType.Item : PayType.Resources;
-        }
-
-        private bool CanCarHaveLock(ModularCar car) =>
-            FindFirstDriverModule(car) != null;
-
-        private bool CanVehicleHaveALock(BaseEntity vehicle)
-        {
-            // Only modular cars have restrictions
-            var car = vehicle as ModularCar;
-            return car == null || CanCarHaveLock(car);
-        }
-
-        private bool CanPlayerAffordLock(BasePlayer player, LockInfo lockInfo, out PayType payType)
-        {
-            payType = DeterminePayType(player.IPlayer, lockInfo);
-            if (payType != PayType.Resources)
-                return true;
-
-            return player.inventory.crafting.CanCraft(lockInfo.ItemDefinition, 1);
-        }
-
-        private Item GetPlayerLock(BasePlayer player, LockInfo lockInfo) =>
-            player.inventory.FindItemID(lockInfo.ItemId);
-
-        private BaseEntity GetParentVehicle(BaseEntity entity)
-        {
-            var parent = entity.GetParentEntity();
-            if (parent == null)
-                return null;
-
-            if (parent is HotAirBalloon || parent is BaseVehicle)
-                return parent;
-
-            var parentModule = parent as BaseVehicleModule;
-            if (parentModule != null)
-                return parentModule.Vehicle;
-
-            foreach (var vehicleConfig in _customVehicleTypes.Values)
-            {
-                var lockParent = vehicleConfig.DetermineLockParent(entity);
-                if (lockParent != null)
-                    return lockParent;
-            }
-
-            return null;
-        }
-
-        private static VehicleModuleSeating FindFirstDriverModule(ModularCar car)
-        {
-            for (int socketIndex = 0; socketIndex < car.TotalSockets; socketIndex++)
-            {
-                BaseVehicleModule module;
-                if (car.TryGetModuleAt(socketIndex, out module))
-                {
-                    var seatingModule = module as VehicleModuleSeating;
-                    if (seatingModule != null && seatingModule.HasADriverSeat())
-                        return seatingModule;
-                }
-            }
-            return null;
-        }
-
-        private BaseLock DeployLockForPlayer(BaseEntity vehicle, VehicleInfo vehicleInfo, LockInfo lockInfo, BasePlayer player, PayType payType)
-        {
-            var baseLock = DeployLock(vehicle, vehicleInfo, lockInfo, player.userID);
-            if (baseLock == null)
-                return null;
-
-            // Allow other plugins to detect the code lock being deployed (e.g., auto lock)
-            var lockItem = GetPlayerLock(player, lockInfo);
-            if (lockItem != null)
-                Interface.CallHook("OnItemDeployed", lockItem.GetHeldEntity(), vehicle, baseLock);
-            else
-            {
-                // Temporarily increase the player inventory capacity to ensure there is enough space
-                player.inventory.containerMain.capacity++;
-                var temporaryLockItem = ItemManager.CreateByItemID(lockInfo.ItemId);
-                if (player.inventory.GiveItem(temporaryLockItem))
-                {
-                    Interface.CallHook("OnItemDeployed", temporaryLockItem.GetHeldEntity(), vehicle, baseLock);
-                    temporaryLockItem.RemoveFromContainer();
-                }
-                temporaryLockItem.Remove();
-                player.inventory.containerMain.capacity--;
-            }
-
-            MaybeChargePlayerForLock(player, lockInfo, payType);
-            return baseLock;
-        }
-
-        private void MaybeChargePlayerForLock(BasePlayer player, LockInfo lockInfo, PayType payType)
-        {
-            if (payType == PayType.Free)
-                return;
-
-            if (payType == PayType.Item)
-            {
-                // Prefer taking the item they are holding in case they are deploying directly.
-                var heldItem = player.GetActiveItem();
-                if (heldItem != null && heldItem.info.itemid == lockInfo.ItemId)
-                    heldItem.UseItem(1);
-                else
-                    player.inventory.Take(null, lockInfo.ItemId, 1);
-
-                player.Command("note.inv", lockInfo.ItemId, -1);
-                return;
-            }
-
-            foreach (var ingredient in lockInfo.Blueprint.ingredients)
-            {
-                player.inventory.Take(null, ingredient.itemid, (int)ingredient.amount);
-                player.Command("note.inv", ingredient.itemid, -ingredient.amount);
-                GetCooldownManager(lockInfo).UpdateLastUsedForPlayer(player.UserIDString);
-            }
-        }
-
-        private BaseLock DeployLock(BaseEntity vehicle, VehicleInfo vehicleInfo, LockInfo lockInfo, ulong ownerID = 0)
-        {
-            var parentToEntity = vehicleInfo.DetermineLockParent(vehicle);
-            if (parentToEntity == null)
-                return null;
-
-            var baseLock = GameManager.server.CreateEntity(lockInfo.Prefab, vehicleInfo.LockPosition, vehicleInfo.LockRotation) as BaseLock;
-            if (baseLock == null)
-                return null;
-
-            if (baseLock is KeyLock)
-                (baseLock as KeyLock).keyCode = UnityEngine.Random.Range(1, 100000);
-
-            if (ownerID != 0)
-                baseLock.OwnerID = ownerID;
-
-            baseLock.SetParent(parentToEntity, vehicleInfo.ParentBone);
-            baseLock.Spawn();
-            vehicle.SetSlot(BaseEntity.Slot.Lock, baseLock);
-
-            Effect.server.Run(Prefab_CodeLock_DeployedEffect, baseLock.transform.position);
-            Interface.CallHook("OnVehicleLockDeployed", vehicle, baseLock);
-
-            return baseLock;
-        }
-
-        private VehicleInfo GetVehicleInfo(BaseEntity entity)
-        {
-            if (entity is CH47Helicopter)
-                return VehicleInfo_Chinook;
-
-            if (entity is HotAirBalloon)
-                return VehicleInfo_HotAirBalloon;
-
-            if (entity is Kayak)
-                return VehicleInfo_Kayak;
-
-            if (entity is RidableHorse)
-                return VehicleInfo_RidableHorse;
-
-            // Must go before MiniCopter
-            if (entity is ScrapTransportHelicopter)
-                return VehicleInfo_ScrapHeli;
-
-            if (entity is MiniCopter)
-                return VehicleInfo_MiniCopter;
-
-            if (entity is ModularCar)
-                return VehicleInfo_ModularCar;
-
-            // Must go before MotorRowboat
-            if (entity is RHIB)
-                return VehicleInfo_RHIB;
-
-            if (entity is MotorRowboat)
-                return VehicleInfo_Rowboat;
-
-            if (entity is BasicCar)
-                return VehicleInfo_Sedan;
-
-            if (entity is TrainEngine)
-                return VehicleInfo_Workcart;
-
-            if (entity is BaseCrane)
-                return VehicleInfo_MagnetCrane;
-
-            foreach (var vehicleInfo in _customVehicleTypes.Values)
-            {
-                if (vehicleInfo.DetermineLockParent(entity))
-                    return vehicleInfo;
-            }
-
-            return null;
-        }
-
-        private bool TryGet<T>(T input, out T output)
-        {
-            output = input;
-            return input != null;
-        }
-
-        private BaseEntity GetVehicleFromEntity(BaseEntity entity, BasePlayer basePlayer)
-        {
-            if (entity == null)
-                return null;
-
-            var module = entity as BaseVehicleModule;
-            if (module != null)
-                return module.Vehicle;
-
-            var carLift = entity as ModularCarGarage;
-            if (!ReferenceEquals(carLift, null))
-                return carLift.carOccupant;
-
-            var hitchTrough = entity as HitchTrough;
-            if (!ReferenceEquals(hitchTrough, null))
-                return GetClosestHorse(hitchTrough, basePlayer);
-
-            return entity;
-        }
-
-        private RidableHorse GetClosestHorse(HitchTrough hitchTrough, BasePlayer player)
-        {
-            var closestDistance = 1000f;
-            RidableHorse closestHorse = null;
-
-            for (var i = 0; i < hitchTrough.hitchSpots.Length; i++)
-            {
-                var hitchSpot = hitchTrough.hitchSpots[i];
-                if (!hitchSpot.IsOccupied())
-                    continue;
-
-                var distance = Vector3.Distance(player.transform.position, hitchSpot.spot.position);
-                if (distance < closestDistance)
-                {
-                    closestDistance = distance;
-                    closestHorse = hitchSpot.horse.Get(serverside: true) as RidableHorse;
-                }
-            }
-
-            return closestHorse;
-        }
-
-        private BaseLock GetVehicleLock(BaseEntity vehicle) =>
-            vehicle.GetSlot(BaseEntity.Slot.Lock) as BaseLock;
-
-        private bool CanPlayerBypassLock(BasePlayer player, BaseLock baseLock)
-        {
-            object hookResult = Interface.CallHook("CanUseLockedEntity", player, baseLock);
-            if (hookResult is bool)
-                return (bool)hookResult;
-
-            return IsPlayerAuthorizedToLock(player, baseLock)
-                || IsLockSharedWithPlayer(player, baseLock);
-        }
-
-        private bool IsPlayerAuthorizedToLock(BasePlayer player, BaseLock baseLock) =>
-            (baseLock as KeyLock)?.HasLockPermission(player) ?? IsPlayerAuthorizedToCodeLock(player.userID, baseLock as CodeLock);
-
-        private bool IsPlayerAuthorizedToCodeLock(ulong userID, CodeLock codeLock) =>
-            codeLock.whitelistPlayers.Contains(userID)
-            || codeLock.guestPlayers.Contains(userID);
-
-        private bool IsLockSharedWithPlayer(BasePlayer player, BaseLock baseLock)
-        {
-            var ownerID = baseLock.OwnerID;
-            if (ownerID == 0 || ownerID == player.userID)
-                return false;
-
-            // In case the owner was locked out for some reason
-            var codeLock = baseLock as CodeLock;
-            if (codeLock != null && !IsPlayerAuthorizedToCodeLock(ownerID, codeLock))
-                return false;
-
-            var sharingSettings = _pluginConfig.SharingSettings;
-            if (sharingSettings.Team && player.currentTeam != 0)
-            {
-                var team = RelationshipManager.ServerInstance.FindTeam(player.currentTeam);
-                if (team != null && team.members.Contains(ownerID))
-                    return true;
-            }
-
-            if (sharingSettings.Friends && Friends != null)
-            {
-                var friendsResult = Friends.Call("HasFriend", baseLock.OwnerID, player.userID);
-                if (friendsResult is bool && (bool)friendsResult)
-                    return true;
-            }
-
-            if ((sharingSettings.Clan || sharingSettings.ClanOrAlly) && Clans != null)
-            {
-                var clanMethodName = sharingSettings.ClanOrAlly ? "IsMemberOrAlly" : "IsClanMember";
-                var clanResult = Clans.Call(clanMethodName, ownerID.ToString(), player.UserIDString);
-                if (clanResult is bool && (bool)clanResult)
-                    return true;
-            }
-
-            return false;
-        }
-
-        #endregion
-
-        #region Lock Info
-
-        private class LockInfo
-        {
-            public int ItemId;
-            public string Prefab;
-            public string PermissionAllVehicles;
-            public string PermissionFree;
-            public string PreHookName;
-
-            public ItemDefinition ItemDefinition =>
-                ItemManager.FindItemDefinition(ItemId);
-
-            public ItemBlueprint Blueprint =>
-                ItemManager.FindBlueprint(ItemDefinition);
-        }
-
-        private readonly LockInfo LockInfo_CodeLock = new LockInfo()
-        {
-            ItemId = 1159991980,
-            Prefab = "assets/prefabs/locks/keypad/lock.code.prefab",
-            PermissionAllVehicles = $"{Permission_CodeLock_Prefix}.allvehicles",
-            PermissionFree = $"{Permission_CodeLock_Prefix}.free",
-            PreHookName = "CanDeployVehicleCodeLock",
-        };
-
-        private readonly LockInfo LockInfo_KeyLock = new LockInfo()
-        {
-            ItemId = -850982208,
-            Prefab = "assets/prefabs/locks/keylock/lock.key.prefab",
-            PermissionAllVehicles = $"{Permission_KeyLock_Prefix}.allvehicles",
-            PermissionFree = $"{Permission_KeyLock_Prefix}.free",
-            PreHookName = "CanDeployVehicleKeyLock",
-        };
 
         #endregion
 
@@ -1025,6 +947,92 @@ namespace Oxide.Plugins
             LockPosition = new Vector3(-0.2f, 2.35f, 2.7f),
         };
 
+        private VehicleInfo GetVehicleInfo(BaseEntity entity)
+        {
+            if (entity is CH47Helicopter)
+                return VehicleInfo_Chinook;
+
+            if (entity is HotAirBalloon)
+                return VehicleInfo_HotAirBalloon;
+
+            if (entity is Kayak)
+                return VehicleInfo_Kayak;
+
+            if (entity is RidableHorse)
+                return VehicleInfo_RidableHorse;
+
+            // Must go before MiniCopter
+            if (entity is ScrapTransportHelicopter)
+                return VehicleInfo_ScrapHeli;
+
+            if (entity is MiniCopter)
+                return VehicleInfo_MiniCopter;
+
+            if (entity is ModularCar)
+                return VehicleInfo_ModularCar;
+
+            // Must go before MotorRowboat
+            if (entity is RHIB)
+                return VehicleInfo_RHIB;
+
+            if (entity is MotorRowboat)
+                return VehicleInfo_Rowboat;
+
+            if (entity is BasicCar)
+                return VehicleInfo_Sedan;
+
+            if (entity is TrainEngine)
+                return VehicleInfo_Workcart;
+
+            if (entity is BaseCrane)
+                return VehicleInfo_MagnetCrane;
+
+            foreach (var vehicleInfo in _customVehicleTypes.Values)
+            {
+                if (vehicleInfo.DetermineLockParent(entity))
+                    return vehicleInfo;
+            }
+
+            return null;
+        }
+
+        #endregion
+
+        #region Lock Info
+
+        private class LockInfo
+        {
+            public int ItemId;
+            public string Prefab;
+            public string PermissionAllVehicles;
+            public string PermissionFree;
+            public string PreHookName;
+
+            public ItemDefinition ItemDefinition =>
+                ItemManager.FindItemDefinition(ItemId);
+
+            public ItemBlueprint Blueprint =>
+                ItemManager.FindBlueprint(ItemDefinition);
+        }
+
+        private readonly LockInfo LockInfo_CodeLock = new LockInfo()
+        {
+            ItemId = 1159991980,
+            Prefab = "assets/prefabs/locks/keypad/lock.code.prefab",
+            PermissionAllVehicles = $"{Permission_CodeLock_Prefix}.allvehicles",
+            PermissionFree = $"{Permission_CodeLock_Prefix}.free",
+            PreHookName = "CanDeployVehicleCodeLock",
+        };
+
+        private readonly LockInfo LockInfo_KeyLock = new LockInfo()
+        {
+            ItemId = -850982208,
+            Prefab = "assets/prefabs/locks/keylock/lock.key.prefab",
+            PermissionAllVehicles = $"{Permission_KeyLock_Prefix}.allvehicles",
+            PermissionFree = $"{Permission_KeyLock_Prefix}.free",
+            PreHookName = "CanDeployVehicleKeyLock",
+        };
+
         #endregion
 
         #region Cooldown Manager
@@ -1050,6 +1058,11 @@ namespace Oxide.Plugins
                     : 0;
             }
         }
+
+        private CooldownManager GetCooldownManager(LockInfo lockInfo) =>
+            lockInfo == LockInfo_CodeLock
+                ? _craftCodeLockCooldowns
+                : _craftKeyLockCooldowns;
 
         #endregion
 
