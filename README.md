@@ -26,9 +26,9 @@ Note: In addition to being able to deploy locks directly, you can also use the f
 ### Code Locks
 
 - `vehicledeployedlocks.codelock.free` -- Allows the player to deploy code locks to vehicles without consuming locks or resources from their inventory.
-- `vehicledeployedlocks.codelock.allvehicles` -- Allows the player to deploy code locks to all supported vehicles.
 
-As an alternative to the `allvehicles` permission, you can grant permissions by vehicle type:
+The following permissions allow players to deploy code locks to vehicles.
+- `vehicledeployedlocks.codelock.allvehicles` (all in one)
 - `vehicledeployedlocks.codelock.chinook`
 - `vehicledeployedlocks.codelock.hotairballoon`
 - `vehicledeployedlocks.codelock.kayak`
@@ -45,9 +45,9 @@ As an alternative to the `allvehicles` permission, you can grant permissions by 
 ### Key Locks
 
 - `vehicledeployedlocks.keylock.free` -- Allows the player to deploy key locks to vehicles without consuming locks or resources from their inventory.
-- `vehicledeployedlocks.keylock.allvehicles` -- Allows the player to deploy key locks to all supported vehicles.
 
-As an alternative to the `allvehicles` permission, you can grant permissions by vehicle type:
+The following permissions allow players to deploy key locks to vehicles.
+- `vehicledeployedlocks.keylock.allvehicles` (all in one)
 - `vehicledeployedlocks.keylock.chinook`
 - `vehicledeployedlocks.keylock.hotairballoon`
 - `vehicledeployedlocks.keylock.kayak`
@@ -116,8 +116,8 @@ Plugins can call these APIs to deploy a lock to a supported vehicle. The `BasePl
 Note: These will skip several checks, such as permissions, whether the player is building blocked, and whether the vehicle is mounted. This allows your plugin to use discretion to determine whether the player should be allowed to deploy a particular lock to a particular vehicle.
 
 ```csharp
-CodeLock API_DeployCodeLock(BaseCombatEntity vehicle, BasePlayer player, bool isFree = true)
-KeyLock API_DeployKeyLock(BaseCombatEntity vehicle, BasePlayer player, bool isFree = true)
+CodeLock API_DeployCodeLock(BaseEntity vehicle, BasePlayer player, bool isFree = true)
+KeyLock API_DeployKeyLock(BaseEntity vehicle, BasePlayer player, bool isFree = true)
 ```
 
 The return value will be the newly deployed lock, or `null` if a lock was not deployed for any of the following reasons.
@@ -133,8 +133,8 @@ The return value will be the newly deployed lock, or `null` if a lock was not de
 Plugins can call these APIs to see if a player is able to deploy a lock to the specified vehicle, following this plugin's configuration and performing the same checks as if the player attempted to deploy a lock via a command, except for permission, cooldown and mounted checks. These methods could be used, for example, by a plugin that adds a UI button to deploy a lock, since it wouldn't have to re-implement various checks that this plugin can already do.
 
 ```csharp
-bool API_CanPlayerDeployCodeLock(BasePlayer player, BaseCombatEntity vehicle)
-bool API_CanPlayerDeployKeyLock(BasePlayer player, BaseCombatEntity vehicle)
+bool API_CanPlayerDeployCodeLock(BasePlayer player, BaseEntity vehicle)
+bool API_CanPlayerDeployKeyLock(BasePlayer player, BaseEntity vehicle)
 ```
 
 #### API_CanAccessVehicle
@@ -142,7 +142,7 @@ bool API_CanPlayerDeployKeyLock(BasePlayer player, BaseCombatEntity vehicle)
 Plugins can call this API to determine whether a player has authorization to a possibly locked vehicle.
 
 ```csharp
-bool API_CanAccessVehicle(BasePlayer player, BaseCombatEntity vehicle, bool provideFeedback = true)
+bool API_CanAccessVehicle(BasePlayer player, BaseEntity vehicle, bool provideFeedback = true)
 ```
 
 Returns `true` if any of the following criteria are met, else returns `false`.
@@ -154,6 +154,66 @@ Returns `true` if any of the following criteria are met, else returns `false`.
 
 If `provideFeedback` is true, the lock will play an access granted or denied sound effect, and the player will be sent a chat message if they do not have access.
 
+#### API_RegisterCustomVehicleType (Experimental)
+
+Plugins can call this API to register custom vehicle types.
+
+```csharp
+void API_RegisterCustomVehicleType(string vehicleType, Vector3 lockPosition, Quaternion lockRotation, string parentBone, Func<BaseEntity, BaseEntity> determineLockParent)
+```
+
+How it works:
+- Your plugin should call this API once to register itself with Vehicle Deployed Locks
+  - It's safe to call more than once, but only once is necessary
+- Vehicle Deployed Locks will automatically register the following permissions
+  - `vehicledeployedlocks.codelock.<vehicleType>`
+  - `vehicledeployedlocks.keylock.<vehicleType>`
+- The `determineLockParent` function will be called at two possible times, listed below
+  - When a player attempts to deploy a lock to an unrecognized entity
+    - If the function returns an entity (as opposed to `null`), this indicates to Vehicle Deployed Locks that the entity can receive a lock
+  - When a player attempts to mount or use an object with an unrecognized parent
+    - If the function returns an entity (as opposed to `null`), this indicates to Vehicle Deployed Locks that it can find the lock on that entity, for authorization purposes
+- The `lockPosition` and `lockRotation` should be relative to the entity that is returned by `determineLockParent`
+- The `parentBone` can be a string referring to the bone of the parent entity that the lock should be positioned relative to
+  - For example, this plugin uses specific bones for attaching locks to Horses and Magnet Cranes
+  - Set to `null` if you don't need to specify a bone (most common)
+
+Example:
+
+```csharp
+[PluginReference]
+Plugin VehicleDeployedLocks;
+
+void OnServerInitialized()
+{
+    RegisterWithVehicleDeployedLocks();
+}
+
+void OnPluginLoaded(Plugin plugin)
+{
+    if (plugin == VehicleDeployedLocks)
+        RegisterWithVehicleDeployedLocks();
+}
+
+void RegisterWithVehicleDeployedLocks()
+{
+    if (VehicleDeployedLocks == null)
+        return;
+
+    Func<BaseEntity, BaseEntity> determineLockParent = (entity) =>
+    {
+        var computerStation = entity as ComputerStation;
+        if (computerStation == null)
+            return null;
+
+        // Only return non-null when this is a custom vehicle.
+        return computerStation.GetParentEntity() as Drone;
+    };
+
+    VehicleDeployedLocks.Call("API_RegisterCustomVehicleType", "megadrone", LockPosition, LockRotation, null, determineLockParent);
+}
+```
+
 ## Hooks
 
 #### CanDeployVehicleCodeLock / CanDeployVehicleKeyLock
@@ -163,28 +223,28 @@ If `provideFeedback` is true, the lock will play an access granted or denied sou
 - Returning `null` will result in the default behavior.
 
 ```csharp
-bool? CanDeployVehicleCodeLock(BaseCombatEntity vehicle, BasePlayer player)
-bool? CanDeployVehicleKeyLock(BaseCombatEntity vehicle, BasePlayer player)
+bool? CanDeployVehicleCodeLock(BaseEntity vehicle, BasePlayer player)
+bool? CanDeployVehicleKeyLock(BaseEntity vehicle, BasePlayer player)
 ```
 
-You can replace the `BaseCombatEntity` type with a more specific one to only run your hook method for specific vehicle types.
+You can replace the `BaseEntity` type with a more specific one to only run your hook method for specific vehicle types.
 
 #### OnVehicleLockDeployed
 
 Called when a player or a plugin deploys a lock to a vehicle.
 
 ```csharp
-void OnVehicleLockDeployed(BaseCombatEntity vehicle, BaseLock baseLock)
+void OnVehicleLockDeployed(BaseEntity vehicle, BaseLock baseLock)
 ```
 
-You can replace the `BaseCombatEntity` and `BaseLock` types with more specific ones to only run your hook method for specific vehicle/lock types.
+You can replace the `BaseEntity` and `BaseLock` types with more specific ones to only run your hook method for specific vehicle/lock types.
 
 #### OnItemDeployed
 
 This is an Oxide hook that is normally called when deploying a lock or other deployable. To allow for compatibility with other plugins, this plugin calls this hook whenever a code lock is deployed to a vehicle for a player.
 
 ```csharp
-void OnItemDeployed(Deployer deployer, BaseCombatEntity entity, BaseLock baseLock)
+void OnItemDeployed(Deployer deployer, BaseEntity entity, BaseLock baseLock)
 ```
 
 Note: This is not called when a lock is deployed via the API without specifying a player. For that, use `OnVehicleLockDeployed`.
@@ -199,7 +259,7 @@ This is an Oxide hook that is normally called when a player attempts to use a lo
 - Returning `null` will result in the default behavior.
 
 ```csharp
-object CanUseLockedEntity(BasePlayer player, BaseLock baseLock)
+bool? CanUseLockedEntity(BasePlayer player, BaseLock baseLock)
 {
     // Example: Only let the lock owner access the car
     if (baseLock == null) return null;
