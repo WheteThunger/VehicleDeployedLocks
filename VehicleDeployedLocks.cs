@@ -8,7 +8,7 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("Vehicle Deployed Locks", "WhiteThunder", "1.2.0")]
+    [Info("Vehicle Deployed Locks", "WhiteThunder", "1.3.0")]
     [Description("Allows players to deploy code locks and key locks to vehicles.")]
     internal class VehicleDeployedLocks : CovalencePlugin
     {
@@ -46,6 +46,7 @@ namespace Oxide.Plugins
             permission.RegisterPermission(LockInfo_CodeLock.PermissionFree, this);
             permission.RegisterPermission(LockInfo_CodeLock.PermissionAllVehicles, this);
             permission.RegisterPermission(VehicleInfo_Chinook.CodeLockPermission, this);
+            permission.RegisterPermission(VehicleInfo_DuoSub.CodeLockPermission, this);
             permission.RegisterPermission(VehicleInfo_HotAirBalloon.CodeLockPermission, this);
             permission.RegisterPermission(VehicleInfo_Kayak.CodeLockPermission, this);
             permission.RegisterPermission(VehicleInfo_MagnetCrane.CodeLockPermission, this);
@@ -56,11 +57,13 @@ namespace Oxide.Plugins
             permission.RegisterPermission(VehicleInfo_Rowboat.CodeLockPermission, this);
             permission.RegisterPermission(VehicleInfo_ScrapHeli.CodeLockPermission, this);
             permission.RegisterPermission(VehicleInfo_Sedan.CodeLockPermission, this);
+            permission.RegisterPermission(VehicleInfo_SoloSub.CodeLockPermission, this);
             permission.RegisterPermission(VehicleInfo_Workcart.CodeLockPermission, this);
 
             permission.RegisterPermission(LockInfo_KeyLock.PermissionFree, this);
             permission.RegisterPermission(LockInfo_KeyLock.PermissionAllVehicles, this);
             permission.RegisterPermission(VehicleInfo_Chinook.KeyLockPermission, this);
+            permission.RegisterPermission(VehicleInfo_DuoSub.KeyLockPermission, this);
             permission.RegisterPermission(VehicleInfo_HotAirBalloon.KeyLockPermission, this);
             permission.RegisterPermission(VehicleInfo_Kayak.KeyLockPermission, this);
             permission.RegisterPermission(VehicleInfo_MagnetCrane.KeyLockPermission, this);
@@ -71,6 +74,7 @@ namespace Oxide.Plugins
             permission.RegisterPermission(VehicleInfo_Rowboat.KeyLockPermission, this);
             permission.RegisterPermission(VehicleInfo_ScrapHeli.KeyLockPermission, this);
             permission.RegisterPermission(VehicleInfo_Sedan.KeyLockPermission, this);
+            permission.RegisterPermission(VehicleInfo_SoloSub.KeyLockPermission, this);
             permission.RegisterPermission(VehicleInfo_Workcart.KeyLockPermission, this);
 
             _craftKeyLockCooldowns = new CooldownManager(_pluginConfig.CraftCooldownSeconds);
@@ -947,6 +951,20 @@ namespace Oxide.Plugins
             LockPosition = new Vector3(-0.2f, 2.35f, 2.7f),
         };
 
+        private readonly VehicleInfo VehicleInfo_DuoSub = new VehicleInfo()
+        {
+            PermissionName = "duosub",
+            LockPosition = new Vector3(-0.455f, 1.29f, 0.75f),
+            LockRotation = Quaternion.Euler(0, 180, 10),
+        };
+
+        private readonly VehicleInfo VehicleInfo_SoloSub = new VehicleInfo()
+        {
+            PermissionName = "solosub",
+            LockPosition = new Vector3(0f, 1.85f, 0f),
+            LockRotation = Quaternion.Euler(0, 90, 90),
+        };
+
         private VehicleInfo GetVehicleInfo(BaseEntity entity)
         {
             if (entity is CH47Helicopter)
@@ -961,7 +979,7 @@ namespace Oxide.Plugins
             if (entity is RidableHorse)
                 return VehicleInfo_RidableHorse;
 
-            // Must go before MiniCopter
+            // Must go before MiniCopter.
             if (entity is ScrapTransportHelicopter)
                 return VehicleInfo_ScrapHeli;
 
@@ -971,12 +989,19 @@ namespace Oxide.Plugins
             if (entity is ModularCar)
                 return VehicleInfo_ModularCar;
 
-            // Must go before MotorRowboat
+            // Must go before MotorRowboat.
             if (entity is RHIB)
                 return VehicleInfo_RHIB;
 
             if (entity is MotorRowboat)
                 return VehicleInfo_Rowboat;
+
+            // Must go before BaseSubmarine.
+            if (entity is SubmarineDuo)
+                return VehicleInfo_DuoSub;
+
+            if (entity is BaseSubmarine)
+                return VehicleInfo_SoloSub;
 
             if (entity is BasicCar)
                 return VehicleInfo_Sedan;
