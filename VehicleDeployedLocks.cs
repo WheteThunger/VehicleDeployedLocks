@@ -8,7 +8,7 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("Vehicle Deployed Locks", "WhiteThunder", "1.3.0")]
+    [Info("Vehicle Deployed Locks", "WhiteThunder", "1.4.0")]
     [Description("Allows players to deploy code locks and key locks to vehicles.")]
     internal class VehicleDeployedLocks : CovalencePlugin
     {
@@ -45,6 +45,7 @@ namespace Oxide.Plugins
 
             permission.RegisterPermission(LockInfo_CodeLock.PermissionFree, this);
             permission.RegisterPermission(LockInfo_CodeLock.PermissionAllVehicles, this);
+            permission.RegisterPermission(LockInfo_CodeLock.PermissionMasterKey, this);
             permission.RegisterPermission(VehicleInfo_Chinook.CodeLockPermission, this);
             permission.RegisterPermission(VehicleInfo_DuoSub.CodeLockPermission, this);
             permission.RegisterPermission(VehicleInfo_HotAirBalloon.CodeLockPermission, this);
@@ -62,6 +63,7 @@ namespace Oxide.Plugins
 
             permission.RegisterPermission(LockInfo_KeyLock.PermissionFree, this);
             permission.RegisterPermission(LockInfo_KeyLock.PermissionAllVehicles, this);
+            permission.RegisterPermission(LockInfo_KeyLock.PermissionMasterKey, this);
             permission.RegisterPermission(VehicleInfo_Chinook.KeyLockPermission, this);
             permission.RegisterPermission(VehicleInfo_DuoSub.KeyLockPermission, this);
             permission.RegisterPermission(VehicleInfo_HotAirBalloon.KeyLockPermission, this);
@@ -350,6 +352,22 @@ namespace Oxide.Plugins
         private bool IsPlayerAuthorizedToLock(BasePlayer player, BaseLock baseLock) =>
             (baseLock as KeyLock)?.HasLockPermission(player) ?? IsPlayerAuthorizedToCodeLock(player.userID, baseLock as CodeLock);
 
+        private bool PlayerHasMasterKeyForLock(BasePlayer player, BaseLock baseLock)
+        {
+            if (baseLock is KeyLock && permission.UserHasPermission(player.UserIDString, LockInfo_KeyLock.PermissionMasterKey))
+            {
+                return true;
+            }
+            else if (baseLock is CodeLock && permission.UserHasPermission(player.UserIDString, LockInfo_CodeLock.PermissionMasterKey))
+            {
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+        }
+
         private bool IsLockSharedWithPlayer(BasePlayer player, BaseLock baseLock)
         {
             var ownerID = baseLock.OwnerID;
@@ -394,7 +412,8 @@ namespace Oxide.Plugins
                 return (bool)hookResult;
 
             return IsPlayerAuthorizedToLock(player, baseLock)
-                || IsLockSharedWithPlayer(player, baseLock);
+                || IsLockSharedWithPlayer(player, baseLock)
+                || PlayerHasMasterKeyForLock(player, baseLock);
         }
 
         private bool? CanPlayerInteractWithVehicle(BasePlayer player, BaseEntity vehicle, bool provideFeedback = true)
@@ -1031,6 +1050,7 @@ namespace Oxide.Plugins
             public string Prefab;
             public string PermissionAllVehicles;
             public string PermissionFree;
+            public string PermissionMasterKey;
             public string PreHookName;
 
             public ItemDefinition ItemDefinition =>
@@ -1046,6 +1066,7 @@ namespace Oxide.Plugins
             Prefab = "assets/prefabs/locks/keypad/lock.code.prefab",
             PermissionAllVehicles = $"{Permission_CodeLock_Prefix}.allvehicles",
             PermissionFree = $"{Permission_CodeLock_Prefix}.free",
+            PermissionMasterKey = $"{Permission_CodeLock_Prefix}.masterkey",
             PreHookName = "CanDeployVehicleCodeLock",
         };
 
@@ -1055,6 +1076,7 @@ namespace Oxide.Plugins
             Prefab = "assets/prefabs/locks/keylock/lock.key.prefab",
             PermissionAllVehicles = $"{Permission_KeyLock_Prefix}.allvehicles",
             PermissionFree = $"{Permission_KeyLock_Prefix}.free",
+            PermissionMasterKey = $"{Permission_KeyLock_Prefix}.masterkey",
             PreHookName = "CanDeployVehicleKeyLock",
         };
 
