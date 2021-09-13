@@ -831,7 +831,7 @@ namespace Oxide.Plugins
         }
 
         #endregion
-            
+
         #region Vehicle Info
 
         private class VehicleInfo
