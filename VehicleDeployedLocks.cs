@@ -19,6 +19,7 @@ namespace Oxide.Plugins
 
         private const string Permission_CodeLock_Prefix = "vehicledeployedlocks.codelock";
         private const string Permission_KeyLock_Prefix = "vehicledeployedlocks.keylock";
+        private const string Permission_MasterKey = "vehicledeployedlocks.masterkey";
 
         private const string Prefab_CodeLock_DeployedEffect = "assets/prefabs/locks/keypad/effects/lock-code-deploy.prefab";
         private const string Prefab_CodeLock_DeniedEffect = "assets/prefabs/locks/keypad/effects/lock.code.denied.prefab";
@@ -45,7 +46,6 @@ namespace Oxide.Plugins
 
             permission.RegisterPermission(LockInfo_CodeLock.PermissionFree, this);
             permission.RegisterPermission(LockInfo_CodeLock.PermissionAllVehicles, this);
-            permission.RegisterPermission(LockInfo_CodeLock.PermissionMasterKey, this);
             permission.RegisterPermission(VehicleInfo_Chinook.CodeLockPermission, this);
             permission.RegisterPermission(VehicleInfo_DuoSub.CodeLockPermission, this);
             permission.RegisterPermission(VehicleInfo_HotAirBalloon.CodeLockPermission, this);
@@ -63,7 +63,6 @@ namespace Oxide.Plugins
 
             permission.RegisterPermission(LockInfo_KeyLock.PermissionFree, this);
             permission.RegisterPermission(LockInfo_KeyLock.PermissionAllVehicles, this);
-            permission.RegisterPermission(LockInfo_KeyLock.PermissionMasterKey, this);
             permission.RegisterPermission(VehicleInfo_Chinook.KeyLockPermission, this);
             permission.RegisterPermission(VehicleInfo_DuoSub.KeyLockPermission, this);
             permission.RegisterPermission(VehicleInfo_HotAirBalloon.KeyLockPermission, this);
@@ -78,6 +77,8 @@ namespace Oxide.Plugins
             permission.RegisterPermission(VehicleInfo_Sedan.KeyLockPermission, this);
             permission.RegisterPermission(VehicleInfo_SoloSub.KeyLockPermission, this);
             permission.RegisterPermission(VehicleInfo_Workcart.KeyLockPermission, this);
+
+            permission.RegisterPermission(Permission_MasterKey, this);
 
             _craftKeyLockCooldowns = new CooldownManager(_pluginConfig.CraftCooldownSeconds);
             _craftCodeLockCooldowns = new CooldownManager(_pluginConfig.CraftCooldownSeconds);
@@ -354,18 +355,7 @@ namespace Oxide.Plugins
 
         private bool PlayerHasMasterKeyForLock(BasePlayer player, BaseLock baseLock)
         {
-            if (baseLock is KeyLock && permission.UserHasPermission(player.UserIDString, LockInfo_KeyLock.PermissionMasterKey))
-            {
-                return true;
-            }
-            else if (baseLock is CodeLock && permission.UserHasPermission(player.UserIDString, LockInfo_CodeLock.PermissionMasterKey))
-            {
-                return true;
-            }
-            else
-            {
-                return false;
-            }
+            return permission.UserHasPermission(player.UserIDString, Permission_MasterKey);
         }
 
         private bool IsLockSharedWithPlayer(BasePlayer player, BaseLock baseLock)
@@ -841,7 +831,7 @@ namespace Oxide.Plugins
         }
 
         #endregion
-
+            
         #region Vehicle Info
 
         private class VehicleInfo
@@ -1050,7 +1040,6 @@ namespace Oxide.Plugins
             public string Prefab;
             public string PermissionAllVehicles;
             public string PermissionFree;
-            public string PermissionMasterKey;
             public string PreHookName;
 
             public ItemDefinition ItemDefinition =>
@@ -1066,7 +1055,6 @@ namespace Oxide.Plugins
             Prefab = "assets/prefabs/locks/keypad/lock.code.prefab",
             PermissionAllVehicles = $"{Permission_CodeLock_Prefix}.allvehicles",
             PermissionFree = $"{Permission_CodeLock_Prefix}.free",
-            PermissionMasterKey = $"{Permission_CodeLock_Prefix}.masterkey",
             PreHookName = "CanDeployVehicleCodeLock",
         };
 
@@ -1076,7 +1064,6 @@ namespace Oxide.Plugins
             Prefab = "assets/prefabs/locks/keylock/lock.key.prefab",
             PermissionAllVehicles = $"{Permission_KeyLock_Prefix}.allvehicles",
             PermissionFree = $"{Permission_KeyLock_Prefix}.free",
-            PermissionMasterKey = $"{Permission_KeyLock_Prefix}.masterkey",
             PreHookName = "CanDeployVehicleKeyLock",
         };
 
