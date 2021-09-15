@@ -23,6 +23,10 @@ Note: In addition to being able to deploy locks directly, you can also use the f
 
 ## Permissions
 
+### All locks
+
+- `vehicledeployedlocks.masterkey` -- Allows the player to open any lock managed by this plugin, useful for allowing admins access to locked vehicles.
+
 ### Code Locks
 
 - `vehicledeployedlocks.codelock.free` -- Allows the player to deploy code locks to vehicles without consuming locks or resources from their inventory.
