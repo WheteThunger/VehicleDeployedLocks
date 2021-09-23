@@ -614,8 +614,9 @@ namespace Oxide.Plugins
             if (baseLock == null)
                 return null;
 
-            if (baseLock is KeyLock)
-                (baseLock as KeyLock).keyCode = UnityEngine.Random.Range(1, 100000);
+            var keyLock = baseLock as KeyLock;
+            if (keyLock != null)
+                keyLock.keyCode = UnityEngine.Random.Range(1, 100000);
 
             if (ownerID != 0)
                 baseLock.OwnerID = ownerID;
@@ -623,6 +624,10 @@ namespace Oxide.Plugins
             baseLock.SetParent(parentToEntity, vehicleInfo.ParentBone);
             baseLock.Spawn();
             vehicle.SetSlot(BaseEntity.Slot.Lock, baseLock);
+
+            // Auto lock key locks to be consistent with vanilla.
+            if (ownerID != 0 && keyLock != null)
+                keyLock.SetFlag(BaseEntity.Flags.Locked, true);
 
             Effect.server.Run(Prefab_CodeLock_DeployedEffect, baseLock.transform.position);
             Interface.CallHook("OnVehicleLockDeployed", vehicle, baseLock);
