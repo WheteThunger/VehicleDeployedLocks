@@ -75,6 +75,7 @@ The following permissions allow players to deploy key locks to vehicles.
 {
   "AllowIfDifferentOwner": false,
   "AllowIfNoOwner": true,
+  "RequireTCIfNoOwner": false,
   "CraftCooldownSeconds": 10.0,
   "ModularCarSettings": {
     "AllowEditingWhileLockedOut": true
@@ -88,8 +89,9 @@ The following permissions allow players to deploy key locks to vehicles.
 }
 ```
 
-- `AllowIfDifferentOwner` (`true` or `false`) -- Whether to allow players to deploy a lock to a vehicle owned by someone else (i.e., a vehicle whose `OwnerID` is a different player's Steam ID). Such vehicles are likely spawned by a plugin, or a plugin allowed the player to claim that vehicle. This is `false` by default to protect owned vehicles from having locks deployed to them by others. Note: If the owner leaves a code lock unlocked, another player can still lock it with a custom code to lock out the owner.
-- `AllowIfNoOwner` (`true` or `false`) -- Whether to allow players to deploy a lock to a vehicle that has no owner (i.e., `OwnerID` is `0`), which usually describes vehicles that spawned naturally in the world, though some plugins may spawn vehicles with no owner as well. Note: Vehicles spawned at NPC vendors have no owner by default, unless set by a plugin such as [Vehicle Vendor Options](https://umod.org/plugins/vehicle-vendor-options). You can also use the [Claim Vehicle Ownership](https://umod.org/plugins/claim-vehicle-ownership) plugin to allow players to claim unowned vehicles with an optional cooldown.
+- `AllowIfDifferentOwner` (`true` or `false`) -- Whether to allow players to deploy a lock onto a vehicle owned by someone else (i.e., a vehicle whose `OwnerID` is a different player's Steam ID). Such vehicles are likely spawned by a plugin, or a plugin allowed the player to claim that vehicle. This is `false` by default to protect owned vehicles from having locks deployed onto them by others. Note: If the owner leaves a code lock unlocked, another player can still lock it with a custom code to lock out the owner.
+- `AllowIfNoOwner` (`true` or `false`) -- Whether to allow players to deploy a lock onto a vehicle that has no owner (i.e., `OwnerID` is `0`), which usually describes vehicles that spawned naturally in the world, though some plugins may spawn vehicles with no owner as well. Note: Vehicles spawned at NPC vendors have no owner by default, unless set by a plugin such as [Vehicle Vendor Options](https://umod.org/plugins/vehicle-vendor-options). You can also use the [Claim Vehicle Ownership](https://umod.org/plugins/claim-vehicle-ownership) plugin to allow players to claim unowned vehicles with an optional cooldown.
+- `RequireTCIfNoOwner` (`true` or `false`) -- Whether to require players to be within TC radius to deploy a lock onto an **unowned** vehicle.
 - `CraftCooldownSeconds` -- Cooldown for players to craft a lock if they don't have one in their inventory. Since players can pickup vehicle-deployed locks (by design), this cooldown prevents players from effectively making locks faster than they could normally craft them. Configure this based on the crafting speed of locks on your server.
 - `ModularCarSettings`
   - `AllowEditingWhileLockedOut` -- Whether to allow players to edit a car at a lift while they are not authorized to the car's lock. This is `true` by default to be consistent with the vanilla car locks which allow players to edit the car (which likely allows removal of the lock). Setting this to `false` will make it impossible for unauthorized players to edit the car.
@@ -107,6 +109,7 @@ The following permissions allow players to deploy key locks to vehicles.
   "Deploy.Error.VehicleDead": "Error: That vehicle is dead.",
   "Deploy.Error.DifferentOwner": "Error: Someone else owns that vehicle.",
   "Deploy.Error.NoOwner": "Error: You do not own that vehicle.",
+  "Deploy.Error.NoOwner.NoBuildingPrivilege": "Error: Locking unowned vehicles requires building privilege.",
   "Deploy.Error.HasLock": "Error: That vehicle already has a lock.",
   "Deploy.Error.InsufficientResources": "Error: Not enough resources to craft a {0}.",
   "Deploy.Error.Mounted": "Error: That vehicle is currently occupied.",
@@ -119,9 +122,9 @@ The following permissions allow players to deploy key locks to vehicles.
 
 #### API_DeployCodeLock / API_DeployKeyLock
 
-Plugins can call these APIs to deploy a lock to a supported vehicle. The `BasePlayer` parameter is optional, but providing it is recommended as it allows for potential compatibility with auto-lock plugins, and allows the player to access the key lock without a key.
+Plugins can call these APIs to deploy a lock onto a supported vehicle. The `BasePlayer` parameter is optional, but providing it is recommended as it allows for potential compatibility with auto-lock plugins, and allows the player to access the key lock without a key.
 
-Note: These will skip several checks, such as permissions, whether the player is building blocked, and whether the vehicle is mounted. This allows your plugin to use discretion to determine whether the player should be allowed to deploy a particular lock to a particular vehicle.
+Note: These will skip several checks, such as permissions, whether the player is building blocked, and whether the vehicle is mounted. This allows your plugin to use discretion to determine whether the player should be allowed to deploy a particular lock onto a particular vehicle.
 
 ```csharp
 CodeLock API_DeployCodeLock(BaseEntity vehicle, BasePlayer player, bool isFree = true)
@@ -177,7 +180,7 @@ How it works:
   - `vehicledeployedlocks.codelock.<vehicleType>`
   - `vehicledeployedlocks.keylock.<vehicleType>`
 - The `determineLockParent` function will be called at two possible times, listed below
-  - When a player attempts to deploy a lock to an unrecognized entity
+  - When a player attempts to deploy a lock onto an unrecognized entity
     - If the function returns an entity (as opposed to `null`), this indicates to Vehicle Deployed Locks that the entity can receive a lock
   - When a player attempts to mount or use an object with an unrecognized parent
     - If the function returns an entity (as opposed to `null`), this indicates to Vehicle Deployed Locks that it can find the lock on that entity, for authorization purposes
@@ -226,7 +229,7 @@ void RegisterWithVehicleDeployedLocks()
 
 #### CanDeployVehicleCodeLock / CanDeployVehicleKeyLock
 
-- Called when a player or a plugin tries to deploy a lock to a vehicle.
+- Called when a player or a plugin tries to deploy a lock onto a vehicle.
 - Returning `false` will prevent the lock from being deployed. None of the player's items will be consumed.
 - Returning `null` will result in the default behavior.
 
@@ -239,7 +242,7 @@ You can replace the `BaseEntity` type with a more specific one to only run your 
 
 #### OnVehicleLockDeployed
 
-Called when a player or a plugin deploys a lock to a vehicle.
+Called when a player or a plugin deploys a lock onto a vehicle.
 
 ```csharp
 void OnVehicleLockDeployed(BaseEntity vehicle, BaseLock baseLock)
@@ -249,7 +252,7 @@ You can replace the `BaseEntity` and `BaseLock` types with more specific ones to
 
 #### OnItemDeployed
 
-This is an Oxide hook that is normally called when deploying a lock or other deployable. To allow for compatibility with other plugins, this plugin calls this hook whenever a code lock is deployed to a vehicle for a player.
+This is an Oxide hook that is normally called when deploying a lock or other deployable. To allow for compatibility with other plugins, this plugin calls this hook whenever a code lock is deployed onto a vehicle for a player.
 
 ```csharp
 void OnItemDeployed(Deployer deployer, BaseEntity entity, BaseLock baseLock)

@@ -670,22 +670,6 @@ namespace Oxide.Plugins
 
         #region Helper Methods - Command Checks
 
-        private bool VerifyCanDeploy(IPlayer player, BaseEntity vehicle, VehicleInfo vehicleInfo, LockInfo lockInfo, out PayType payType)
-        {
-            var basePlayer = player.Object as BasePlayer;
-            payType = PayType.Item;
-
-            return VerifyPermissionToVehicleAndLockType(player, vehicleInfo, lockInfo)
-                && VerifyVehicleIsNotDead(player, vehicle)
-                && VerifyNoOwnershipRestriction(player, vehicle)
-                && VerifyCanBuild(player, vehicle)
-                && VerifyVehicleHasNoLock(player, vehicle)
-                && VerifyVehicleCanHaveALock(player, vehicle)
-                && VerifyPlayerCanDeployLock(player, lockInfo, out payType)
-                && VerifyNotMounted(player, vehicle, vehicleInfo)
-                && !DeployWasBlocked(vehicle, basePlayer, lockInfo);
-        }
-
         private bool VerifyDeployDistance(IPlayer player, BaseEntity vehicle)
         {
             if (vehicle.Distance(player.Object as BasePlayer) <= MaxDeployDistance)
@@ -737,11 +721,22 @@ namespace Oxide.Plugins
         private bool VerifyCanBuild(IPlayer player, BaseEntity vehicle)
         {
             var basePlayer = player.Object as BasePlayer;
-            if (basePlayer.CanBuild() && basePlayer.CanBuild(vehicle.WorldSpaceBounds()))
-                return true;
 
-            ReplyToPlayer(player, Lang.GenericErrorBuildingBlocked);
-            return false;
+            if (vehicle.OwnerID == 0 && _pluginConfig.RequireTCIfNoOwner)
+            {
+                if (!basePlayer.IsBuildingAuthed() || !basePlayer.IsBuildingAuthed(vehicle.WorldSpaceBounds()))
+                {
+                    ReplyToPlayer(player, Lang.DeployErrorNoOwnerRequiresTC);
+                    return false;
+                }
+            }
+            else if (basePlayer.IsBuildingBlocked() || basePlayer.IsBuildingBlocked(vehicle.WorldSpaceBounds()))
+            {
+                ReplyToPlayer(player, Lang.GenericErrorBuildingBlocked);
+                return false;
+            }
+
+            return true;
         }
 
         private bool VerifyVehicleHasNoLock(IPlayer player, BaseEntity vehicle)
@@ -794,6 +789,22 @@ namespace Oxide.Plugins
 
             ReplyToPlayer(player, Lang.DeployErrorMounted);
             return false;
+        }
+
+        private bool VerifyCanDeploy(IPlayer player, BaseEntity vehicle, VehicleInfo vehicleInfo, LockInfo lockInfo, out PayType payType)
+        {
+            var basePlayer = player.Object as BasePlayer;
+            payType = PayType.Item;
+
+            return VerifyPermissionToVehicleAndLockType(player, vehicleInfo, lockInfo)
+                && VerifyVehicleIsNotDead(player, vehicle)
+                && VerifyNoOwnershipRestriction(player, vehicle)
+                && VerifyCanBuild(player, vehicle)
+                && VerifyVehicleHasNoLock(player, vehicle)
+                && VerifyVehicleCanHaveALock(player, vehicle)
+                && VerifyPlayerCanDeployLock(player, lockInfo, out payType)
+                && VerifyNotMounted(player, vehicle, vehicleInfo)
+                && !DeployWasBlocked(vehicle, basePlayer, lockInfo);
         }
 
         #endregion
@@ -1091,6 +1102,9 @@ namespace Oxide.Plugins
             [JsonProperty("AllowIfNoOwner")]
             public bool AllowIfNoOwner = true;
 
+            [JsonProperty("RequireTCIfNoOwner")]
+            public bool RequireTCIfNoOwner = false;
+
             [JsonProperty("CraftCooldownSeconds")]
             public float CraftCooldownSeconds = 10;
 
@@ -1259,6 +1273,7 @@ namespace Oxide.Plugins
             public const string DeployErrorVehicleDead = "Deploy.Error.VehicleDead";
             public const string DeployErrorDifferentOwner = "Deploy.Error.DifferentOwner";
             public const string DeployErrorNoOwner = "Deploy.Error.NoOwner";
+            public const string DeployErrorNoOwnerRequiresTC = "Deploy.Error.NoOwner.NoBuildingPrivilege";
             public const string DeployErrorHasLock = "Deploy.Error.HasLock";
             public const string DeployErrorInsufficientResources = "Deploy.Error.InsufficientResources";
             public const string DeployErrorMounted = "Deploy.Error.Mounted";
@@ -1278,6 +1293,7 @@ namespace Oxide.Plugins
                 [Lang.DeployErrorVehicleDead] = "Error: That vehicle is dead.",
                 [Lang.DeployErrorDifferentOwner] = "Error: Someone else owns that vehicle.",
                 [Lang.DeployErrorNoOwner] = "Error: You do not own that vehicle.",
+                [Lang.DeployErrorNoOwnerRequiresTC] = "Error: Locking unowned vehicles requires building privilege.",
                 [Lang.DeployErrorHasLock] = "Error: That vehicle already has a lock.",
                 [Lang.DeployErrorInsufficientResources] = "Error: Not enough resources to craft a {0}.",
                 [Lang.DeployErrorMounted] = "Error: That vehicle is currently occupied.",
