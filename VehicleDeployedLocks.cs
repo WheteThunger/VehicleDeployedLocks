@@ -276,7 +276,7 @@ namespace Oxide.Plugins
             var vehicle = GetVehicleFromEntity(GetLookEntity(basePlayer, MaxDeployDistance), basePlayer);
             if (vehicle == null || !TryGet(_vehicleInfoManager.GetVehicleInfo(vehicle), out vehicleInfo))
             {
-                ReplyToPlayer(player, "Deploy.Error.NoVehicleFound");
+                ReplyToPlayer(player, Lang.DeployErrorNoVehicleFound);
                 return;
             }
 
@@ -387,7 +387,7 @@ namespace Oxide.Plugins
                 if (provideFeedback)
                 {
                     Effect.server.Run(Prefab_CodeLock_DeniedEffect, baseLock, 0, Vector3.zero, Vector3.forward);
-                    ChatMessage(player, "Generic.Error.VehicleLocked");
+                    ChatMessage(player, Lang.GenericErrorVehicleLocked);
                 }
 
                 return false;
@@ -690,7 +690,7 @@ namespace Oxide.Plugins
             if (vehicle.Distance(player.Object as BasePlayer) <= MaxDeployDistance)
                 return true;
 
-            ReplyToPlayer(player, "Deploy.Error.Distance");
+            ReplyToPlayer(player, Lang.DeployErrorDistance);
             return false;
         }
 
@@ -703,7 +703,7 @@ namespace Oxide.Plugins
             if (vehiclePerm != null && HasPermissionAny(player, lockInfo.PermissionAllVehicles, vehiclePerm))
                 return true;
 
-            ReplyToPlayer(player, "Generic.Error.NoPermission");
+            ReplyToPlayer(player, Lang.GenericErrorNoPermission);
             return false;
         }
 
@@ -712,7 +712,7 @@ namespace Oxide.Plugins
             if (!IsDead(vehicle))
                 return true;
 
-            ReplyToPlayer(player, "Deploy.Error.VehicleDead");
+            ReplyToPlayer(player, Lang.DeployErrorVehicleDead);
             return false;
         }
 
@@ -720,13 +720,13 @@ namespace Oxide.Plugins
         {
             if (!AllowNoOwner(vehicle))
             {
-                ReplyToPlayer(player, "Deploy.Error.NoOwner");
+                ReplyToPlayer(player, Lang.DeployErrorNoOwner);
                 return false;
             }
 
             if (!AllowDifferentOwner(player, vehicle))
             {
-                ReplyToPlayer(player, "Deploy.Error.DifferentOwner");
+                ReplyToPlayer(player, Lang.DeployErrorDifferentOwner);
                 return false;
             }
 
@@ -739,7 +739,7 @@ namespace Oxide.Plugins
             if (basePlayer.CanBuild() && basePlayer.CanBuild(vehicle.WorldSpaceBounds()))
                 return true;
 
-            ReplyToPlayer(player, "Generic.Error.BuildingBlocked");
+            ReplyToPlayer(player, Lang.GenericErrorBuildingBlocked);
             return false;
         }
 
@@ -748,7 +748,7 @@ namespace Oxide.Plugins
             if (GetVehicleLock(vehicle) == null)
                 return true;
 
-            ReplyToPlayer(player, "Deploy.Error.HasLock");
+            ReplyToPlayer(player, Lang.DeployErrorHasLock);
             return false;
         }
 
@@ -757,7 +757,7 @@ namespace Oxide.Plugins
             if (CanVehicleHaveALock(vehicle))
                 return true;
 
-            ReplyToPlayer(player, "Deploy.Error.ModularCar.NoCockpit");
+            ReplyToPlayer(player, Lang.DeployErrorModularCarNoCockpit);
             return false;
         }
 
@@ -766,7 +766,7 @@ namespace Oxide.Plugins
             if (CanPlayerAffordLock(player, lockInfo, out payType))
                 return true;
 
-            ChatMessage(player, "Deploy.Error.InsufficientResources", lockInfo.ItemDefinition.displayName.translated);
+            ChatMessage(player, Lang.DeployErrorInsufficientResources, lockInfo.ItemDefinition.displayName.translated);
             return false;
         }
 
@@ -779,7 +779,7 @@ namespace Oxide.Plugins
             if (secondsRemaining <= 0)
                 return true;
 
-            ChatMessage(player.Object as BasePlayer, "Generic.Error.Cooldown", Math.Ceiling(secondsRemaining));
+            ChatMessage(player.Object as BasePlayer, Lang.GenericErrorCooldown, Math.Ceiling(secondsRemaining));
             return false;
         }
 
@@ -791,7 +791,7 @@ namespace Oxide.Plugins
             if (!vehicleInfo.IsMounted(vehicle))
                 return true;
 
-            ReplyToPlayer(player, "Deploy.Error.Mounted");
+            ReplyToPlayer(player, Lang.DeployErrorMounted);
             return false;
         }
 
@@ -1127,35 +1127,55 @@ namespace Oxide.Plugins
 
         #region Localization
 
+        private string GetMessage(string playerId, string messageName, params object[] args)
+        {
+            var message = lang.GetMessage(messageName, this, playerId);
+            return args.Length > 0 ? string.Format(message, args) : message;
+        }
+
+        private string GetMessage(IPlayer player, string messageName, params object[] args) =>
+            GetMessage(player.Id, messageName, args);
+
         private void ReplyToPlayer(IPlayer player, string messageName, params object[] args) =>
             player.Reply(string.Format(GetMessage(player, messageName), args));
 
         private void ChatMessage(BasePlayer player, string messageName, params object[] args) =>
-            player.ChatMessage(string.Format(GetMessage(player.IPlayer, messageName), args));
+            player.ChatMessage(string.Format(GetMessage(player.UserIDString, messageName), args));
 
-        private string GetMessage(IPlayer player, string messageName, params object[] args)
+        private class Lang
         {
-            var message = lang.GetMessage(messageName, this, player.Id);
-            return args.Length > 0 ? string.Format(message, args) : message;
+            public const string GenericErrorNoPermission = "Generic.Error.NoPermission";
+            public const string GenericErrorBuildingBlocked = "Generic.Error.BuildingBlocked";
+            public const string GenericErrorCooldown = "Generic.Error.Cooldown";
+            public const string GenericErrorVehicleLocked = "Generic.Error.VehicleLocked";
+            public const string DeployErrorNoVehicleFound = "Deploy.Error.NoVehicleFound";
+            public const string DeployErrorVehicleDead = "Deploy.Error.VehicleDead";
+            public const string DeployErrorDifferentOwner = "Deploy.Error.DifferentOwner";
+            public const string DeployErrorNoOwner = "Deploy.Error.NoOwner";
+            public const string DeployErrorHasLock = "Deploy.Error.HasLock";
+            public const string DeployErrorInsufficientResources = "Deploy.Error.InsufficientResources";
+            public const string DeployErrorMounted = "Deploy.Error.Mounted";
+            public const string DeployErrorModularCarNoCockpit = "Deploy.Error.ModularCar.NoCockpit";
+            public const string DeployErrorDistance = "Deploy.Error.Distance";
         }
 
         protected override void LoadDefaultMessages()
         {
             lang.RegisterMessages(new Dictionary<string, string>
             {
-                ["Generic.Error.NoPermission"] = "You don't have permission to do that.",
-                ["Generic.Error.BuildingBlocked"] = "Error: Cannot do that while building blocked.",
-                ["Generic.Error.Cooldown"] = "Please wait <color=red>{0}s</color> and try again.",
-                ["Generic.Error.VehicleLocked"] = "That vehicle is locked.",
-                ["Deploy.Error.NoVehicleFound"] = "Error: No vehicle found.",
-                ["Deploy.Error.VehicleDead"] = "Error: That vehicle is dead.",
-                ["Deploy.Error.DifferentOwner"] = "Error: Someone else owns that vehicle.",
-                ["Deploy.Error.NoOwner"] = "Error: You do not own that vehicle.",
-                ["Deploy.Error.HasLock"] = "Error: That vehicle already has a lock.",
-                ["Deploy.Error.InsufficientResources"] = "Error: Not enough resources to craft a {0}.",
-                ["Deploy.Error.Mounted"] = "Error: That vehicle is currently occupied.",
-                ["Deploy.Error.ModularCar.NoCockpit"] = "Error: That car needs a cockpit module to receive a lock.",
-                ["Deploy.Error.Distance"] = "Error: Too far away."
+                [Lang.GenericErrorNoPermission] = "You don't have permission to do that.",
+                [Lang.GenericErrorBuildingBlocked] = "Error: Cannot do that while building blocked.",
+                [Lang.GenericErrorCooldown] = "Please wait <color=red>{0}s</color> and try again.",
+                [Lang.GenericErrorVehicleLocked] = "That vehicle is locked.",
+                [Lang.DeployErrorNoVehicleFound] = "Error: No vehicle found.",
+                [Lang.DeployErrorVehicleDead] = "Error: That vehicle is dead.",
+                [Lang.DeployErrorDifferentOwner] = "Error: Someone else owns that vehicle.",
+                [Lang.DeployErrorNoOwner] = "Error: You do not own that vehicle.",
+                [Lang.DeployErrorHasLock] = "Error: That vehicle already has a lock.",
+                [Lang.DeployErrorInsufficientResources] = "Error: Not enough resources to craft a {0}.",
+                [Lang.DeployErrorMounted] = "Error: That vehicle is currently occupied.",
+                [Lang.DeployErrorModularCarNoCockpit] = "Error: That car needs a cockpit module to receive a lock.",
+                [Lang.DeployErrorDistance] = "Error: Too far away."
             }, this, "en");
         }
 
