@@ -32,7 +32,7 @@ namespace Oxide.Plugins
         private CooldownManager _craftCodeLockCooldowns;
         private CooldownManager _craftKeyLockCooldowns;
 
-        private Dictionary<string, VehicleInfo> _customVehicleTypes = new Dictionary<string, VehicleInfo>();
+        private readonly VehicleInfoManager _vehicleInfoManager = new VehicleInfoManager();
 
         private enum PayType { Item, Resources, Free }
 
@@ -44,44 +44,19 @@ namespace Oxide.Plugins
         {
             _pluginConfig = Config.ReadObject<VehicleLocksConfig>();
 
+            permission.RegisterPermission(Permission_MasterKey, this);
             permission.RegisterPermission(LockInfo_CodeLock.PermissionFree, this);
             permission.RegisterPermission(LockInfo_CodeLock.PermissionAllVehicles, this);
-            permission.RegisterPermission(VehicleInfo_Chinook.CodeLockPermission, this);
-            permission.RegisterPermission(VehicleInfo_DuoSub.CodeLockPermission, this);
-            permission.RegisterPermission(VehicleInfo_HotAirBalloon.CodeLockPermission, this);
-            permission.RegisterPermission(VehicleInfo_Kayak.CodeLockPermission, this);
-            permission.RegisterPermission(VehicleInfo_MagnetCrane.CodeLockPermission, this);
-            permission.RegisterPermission(VehicleInfo_MiniCopter.CodeLockPermission, this);
-            permission.RegisterPermission(VehicleInfo_ModularCar.CodeLockPermission, this);
-            permission.RegisterPermission(VehicleInfo_RHIB.CodeLockPermission, this);
-            permission.RegisterPermission(VehicleInfo_RidableHorse.CodeLockPermission, this);
-            permission.RegisterPermission(VehicleInfo_Rowboat.CodeLockPermission, this);
-            permission.RegisterPermission(VehicleInfo_ScrapHeli.CodeLockPermission, this);
-            permission.RegisterPermission(VehicleInfo_Sedan.CodeLockPermission, this);
-            permission.RegisterPermission(VehicleInfo_SoloSub.CodeLockPermission, this);
-            permission.RegisterPermission(VehicleInfo_Workcart.CodeLockPermission, this);
-
             permission.RegisterPermission(LockInfo_KeyLock.PermissionFree, this);
             permission.RegisterPermission(LockInfo_KeyLock.PermissionAllVehicles, this);
-            permission.RegisterPermission(VehicleInfo_Chinook.KeyLockPermission, this);
-            permission.RegisterPermission(VehicleInfo_DuoSub.KeyLockPermission, this);
-            permission.RegisterPermission(VehicleInfo_HotAirBalloon.KeyLockPermission, this);
-            permission.RegisterPermission(VehicleInfo_Kayak.KeyLockPermission, this);
-            permission.RegisterPermission(VehicleInfo_MagnetCrane.KeyLockPermission, this);
-            permission.RegisterPermission(VehicleInfo_MiniCopter.KeyLockPermission, this);
-            permission.RegisterPermission(VehicleInfo_ModularCar.KeyLockPermission, this);
-            permission.RegisterPermission(VehicleInfo_RHIB.KeyLockPermission, this);
-            permission.RegisterPermission(VehicleInfo_RidableHorse.KeyLockPermission, this);
-            permission.RegisterPermission(VehicleInfo_Rowboat.KeyLockPermission, this);
-            permission.RegisterPermission(VehicleInfo_ScrapHeli.KeyLockPermission, this);
-            permission.RegisterPermission(VehicleInfo_Sedan.KeyLockPermission, this);
-            permission.RegisterPermission(VehicleInfo_SoloSub.KeyLockPermission, this);
-            permission.RegisterPermission(VehicleInfo_Workcart.KeyLockPermission, this);
-
-            permission.RegisterPermission(Permission_MasterKey, this);
 
             _craftKeyLockCooldowns = new CooldownManager(_pluginConfig.CraftCooldownSeconds);
             _craftCodeLockCooldowns = new CooldownManager(_pluginConfig.CraftCooldownSeconds);
+        }
+
+        private void OnServerInitialized()
+        {
+            _vehicleInfoManager.OnServerInitialized(this);
         }
 
         private bool? CanMountEntity(BasePlayer player, BaseMountable entity)
@@ -230,7 +205,7 @@ namespace Oxide.Plugins
             if (vehicle == null)
                 return null;
 
-            var vehicleInfo = GetVehicleInfo(vehicle);
+            var vehicleInfo = _vehicleInfoManager.GetVehicleInfo(vehicle);
             if (vehicleInfo == null)
                 return null;
 
@@ -269,22 +244,14 @@ namespace Oxide.Plugins
 
         private void API_RegisterCustomVehicleType(string vehicleType, Vector3 lockPosition, Quaternion lockRotation, string parentBone, Func<BaseEntity, BaseEntity> determineLockParent)
         {
-            var vehicleInfo = new VehicleInfo()
+            _vehicleInfoManager.RegisterCustomVehicleType(this, new VehicleInfo()
             {
-                PermissionName = vehicleType,
+                VehicleType = vehicleType,
                 LockPosition = lockPosition,
                 LockRotation = lockRotation,
                 ParentBone = parentBone,
                 DetermineLockParent = determineLockParent,
-            };
-
-            if (!_customVehicleTypes.ContainsKey(vehicleType))
-            {
-                permission.RegisterPermission(vehicleInfo.CodeLockPermission, this);
-                permission.RegisterPermission(vehicleInfo.KeyLockPermission, this);
-            }
-
-            _customVehicleTypes[vehicleType] = vehicleInfo;
+            });
         }
 
         #endregion
@@ -307,7 +274,7 @@ namespace Oxide.Plugins
             var basePlayer = player.Object as BasePlayer;
             VehicleInfo vehicleInfo;
             var vehicle = GetVehicleFromEntity(GetLookEntity(basePlayer, MaxDeployDistance), basePlayer);
-            if (vehicle == null || !TryGet(GetVehicleInfo(vehicle), out vehicleInfo))
+            if (vehicle == null || !TryGet(_vehicleInfoManager.GetVehicleInfo(vehicle), out vehicleInfo))
             {
                 ReplyToPlayer(player, "Deploy.Error.NoVehicleFound");
                 return;
@@ -445,14 +412,7 @@ namespace Oxide.Plugins
             if (parentModule != null)
                 return parentModule.Vehicle;
 
-            foreach (var vehicleConfig in _customVehicleTypes.Values)
-            {
-                var lockParent = vehicleConfig.DetermineLockParent(entity);
-                if (lockParent != null)
-                    return lockParent;
-            }
-
-            return null;
+            return _vehicleInfoManager.GetCustomVehicleParent(entity);
         }
 
         private bool? CanPlayerInteractWithParentVehicle(BasePlayer player, BaseEntity entity, bool provideFeedback = true) =>
@@ -670,7 +630,7 @@ namespace Oxide.Plugins
             if (vehicle == null || IsDead(vehicle))
                 return null;
 
-            var vehicleInfo = GetVehicleInfo(vehicle);
+            var vehicleInfo = _vehicleInfoManager.GetVehicleInfo(vehicle);
             if (vehicleInfo == null
                 || GetVehicleLock(vehicle) != null
                 || !CanVehicleHaveALock(vehicle))
@@ -695,7 +655,7 @@ namespace Oxide.Plugins
             PayType payType;
             return vehicle != null
                 && !IsDead(vehicle)
-                && GetVehicleInfo(vehicle) != null
+                && _vehicleInfoManager.GetVehicleInfo(vehicle) != null
                 && AllowNoOwner(vehicle)
                 && AllowDifferentOwner(player.IPlayer, vehicle)
                 && player.CanBuild()
@@ -841,34 +801,39 @@ namespace Oxide.Plugins
 
         private class VehicleInfo
         {
-            public string PermissionName;
+            public string VehicleType;
+            public string[] PrefabPaths;
             public Vector3 LockPosition;
             public Quaternion LockRotation;
             public string ParentBone;
 
+            public string CodeLockPermission { get; private set; }
+            public string KeyLockPermission { get; private set; }
+            public uint[] PrefabIds { get; private set; }
+
             public Func<BaseEntity, BaseEntity> DetermineLockParent = (entity) => entity;
 
-            private string _codeLockPermission;
-            public string CodeLockPermission
+            public void OnServerInitialized(VehicleDeployedLocks pluginInstance)
             {
-                get
+                CodeLockPermission = $"{Permission_CodeLock_Prefix}.{VehicleType}";
+                KeyLockPermission = $"{Permission_KeyLock_Prefix}.{VehicleType}";
+
+                pluginInstance.permission.RegisterPermission(CodeLockPermission, pluginInstance);
+                pluginInstance.permission.RegisterPermission(KeyLockPermission, pluginInstance);
+
+                // Custom vehicles aren't currently allowed to specify prefabs since they reuse existing prefabs.
+                if (PrefabPaths != null)
                 {
-                    if (_codeLockPermission == null)
-                        _codeLockPermission = $"{Permission_CodeLock_Prefix}.{PermissionName}";
-
-                    return _codeLockPermission;
-                }
-            }
-
-            private string _keyLockPermission;
-            public string KeyLockPermission
-            {
-                get
-                {
-                    if (_keyLockPermission == null)
-                        _keyLockPermission = $"{Permission_KeyLock_Prefix}.{PermissionName}";
-
-                    return _keyLockPermission;
+                    var prefabIds = new List<uint>();
+                    foreach (var prefabName in PrefabPaths)
+                    {
+                        var prefabId = StringPool.Get(prefabName);
+                        if (prefabId != 0)
+                            prefabIds.Add(prefabId);
+                        else
+                            pluginInstance.LogError($"Invalid prefab. Please alert the plugin maintainer -- {prefabName}");
+                    }
+                    PrefabIds = prefabIds.ToArray();
                 }
             }
 
@@ -887,152 +852,162 @@ namespace Oxide.Plugins
             }
         }
 
-        private readonly VehicleInfo VehicleInfo_Chinook = new VehicleInfo()
+        private class VehicleInfoManager
         {
-            PermissionName = "chinook",
-            LockPosition = new Vector3(-1.175f, 2, 6.5f),
-        };
+            private readonly Dictionary<uint, VehicleInfo> _prefabIdToVehicleInfo = new Dictionary<uint, VehicleInfo>();
+            private readonly Dictionary<string, VehicleInfo> _customVehicleTypes = new Dictionary<string, VehicleInfo>();
 
-        private readonly VehicleInfo VehicleInfo_HotAirBalloon = new VehicleInfo()
-        {
-            PermissionName = "hotairballoon",
-            LockPosition = new Vector3(1.45f, 0.9f, 0),
-        };
-
-        private readonly VehicleInfo VehicleInfo_Kayak = new VehicleInfo()
-        {
-            PermissionName = "kayak",
-            LockPosition = new Vector3(-0.43f, 0.2f, 0.2f),
-            LockRotation = Quaternion.Euler(0, 90, 90),
-        };
-
-        private readonly VehicleInfo VehicleInfo_MagnetCrane = new VehicleInfo()
-        {
-            PermissionName = "magnetcrane",
-            LockPosition = new Vector3(-1.735f, -1.445f, 0.79f),
-            LockRotation = Quaternion.Euler(0, 0, 90),
-            ParentBone = "Top",
-        };
-
-        private readonly VehicleInfo VehicleInfo_MiniCopter = new VehicleInfo()
-        {
-            PermissionName = "minicopter",
-            LockPosition = new Vector3(-0.15f, 0.7f, -0.1f),
-        };
-
-        private readonly VehicleInfo VehicleInfo_ModularCar = new VehicleInfo()
-        {
-            PermissionName = "modularcar",
-            LockPosition = new Vector3(-0.9f, 0.35f, -0.5f),
-            DetermineLockParent = (vehicle) => FindFirstDriverModule((ModularCar)vehicle),
-        };
-
-        private readonly VehicleInfo VehicleInfo_RHIB = new VehicleInfo()
-        {
-            PermissionName = "rhib",
-            LockPosition = new Vector3(-0.68f, 2.00f, 0.7f),
-        };
-
-        private readonly VehicleInfo VehicleInfo_RidableHorse = new VehicleInfo()
-        {
-            PermissionName = "ridablehorse",
-            LockPosition = new Vector3(-0.6f, 0.35f, -0.1f),
-            LockRotation = Quaternion.Euler(0, 95, 90),
-            ParentBone = "Horse_RootBone",
-        };
-
-        private readonly VehicleInfo VehicleInfo_Rowboat = new VehicleInfo()
-        {
-            PermissionName = "rowboat",
-            LockPosition = new Vector3(-0.83f, 0.51f, -0.57f),
-        };
-
-        private readonly VehicleInfo VehicleInfo_ScrapHeli = new VehicleInfo()
-        {
-            PermissionName = "scraptransport",
-            LockPosition = new Vector3(-1.25f, 1.22f, 1.99f),
-        };
-
-        private readonly VehicleInfo VehicleInfo_Sedan = new VehicleInfo()
-        {
-            PermissionName = "sedan",
-            LockPosition = new Vector3(-1.09f, 0.79f, 0.5f),
-        };
-
-        private readonly VehicleInfo VehicleInfo_Workcart = new VehicleInfo()
-        {
-            PermissionName = "workcart",
-            LockPosition = new Vector3(-0.2f, 2.35f, 2.7f),
-        };
-
-        private readonly VehicleInfo VehicleInfo_DuoSub = new VehicleInfo()
-        {
-            PermissionName = "duosub",
-            LockPosition = new Vector3(-0.455f, 1.29f, 0.75f),
-            LockRotation = Quaternion.Euler(0, 180, 10),
-        };
-
-        private readonly VehicleInfo VehicleInfo_SoloSub = new VehicleInfo()
-        {
-            PermissionName = "solosub",
-            LockPosition = new Vector3(0f, 1.85f, 0f),
-            LockRotation = Quaternion.Euler(0, 90, 90),
-        };
-
-        private VehicleInfo GetVehicleInfo(BaseEntity entity)
-        {
-            if (entity is CH47Helicopter)
-                return VehicleInfo_Chinook;
-
-            if (entity is HotAirBalloon)
-                return VehicleInfo_HotAirBalloon;
-
-            if (entity is Kayak)
-                return VehicleInfo_Kayak;
-
-            if (entity is RidableHorse)
-                return VehicleInfo_RidableHorse;
-
-            // Must go before MiniCopter.
-            if (entity is ScrapTransportHelicopter)
-                return VehicleInfo_ScrapHeli;
-
-            if (entity is MiniCopter)
-                return VehicleInfo_MiniCopter;
-
-            if (entity is ModularCar)
-                return VehicleInfo_ModularCar;
-
-            // Must go before MotorRowboat.
-            if (entity is RHIB)
-                return VehicleInfo_RHIB;
-
-            if (entity is MotorRowboat)
-                return VehicleInfo_Rowboat;
-
-            // Must go before BaseSubmarine.
-            if (entity is SubmarineDuo)
-                return VehicleInfo_DuoSub;
-
-            if (entity is BaseSubmarine)
-                return VehicleInfo_SoloSub;
-
-            if (entity is BasicCar)
-                return VehicleInfo_Sedan;
-
-            if (entity is TrainEngine)
-                return VehicleInfo_Workcart;
-
-            if (entity is BaseCrane)
-                return VehicleInfo_MagnetCrane;
-
-            foreach (var vehicleInfo in _customVehicleTypes.Values)
+            public void OnServerInitialized(VehicleDeployedLocks pluginInstance)
             {
-                if (vehicleInfo.DetermineLockParent(entity))
-                    return vehicleInfo;
+                var allVehicles = new VehicleInfo[]
+                {
+                    new VehicleInfo
+                    {
+                        VehicleType = "chinook",
+                        PrefabPaths = new string[] { "assets/prefabs/npc/ch47/ch47.entity.prefab" },
+                        LockPosition = new Vector3(-1.175f, 2, 6.5f),
+                    },
+                    new VehicleInfo
+                    {
+                        VehicleType = "duosub",
+                        PrefabPaths = new string[] { "assets/content/vehicles/submarine/submarineduo.entity.prefab" },
+                        LockPosition = new Vector3(-0.455f, 1.29f, 0.75f),
+                        LockRotation = Quaternion.Euler(0, 180, 10),
+                    },
+                    new VehicleInfo
+                    {
+                        VehicleType = "hotairballoon",
+                        PrefabPaths = new string[] { "assets/prefabs/deployable/hot air balloon/hotairballoon.prefab" },
+                        LockPosition = new Vector3(1.45f, 0.9f, 0),
+                    },
+                    new VehicleInfo
+                    {
+                        VehicleType = "kayak",
+                        PrefabPaths = new string[] { "assets/content/vehicles/boats/kayak/kayak.prefab" },
+                        LockPosition = new Vector3(-0.43f, 0.2f, 0.2f),
+                        LockRotation = Quaternion.Euler(0, 90, 90),
+                    },
+                    new VehicleInfo
+                    {
+                        VehicleType = "magnetcrane",
+                        PrefabPaths = new string[] { "assets/content/vehicles/crane_magnet/magnetcrane.entity.prefab" },
+                        LockPosition = new Vector3(-1.735f, -1.445f, 0.79f),
+                        LockRotation = Quaternion.Euler(0, 0, 90),
+                        ParentBone = "Top",
+                    },
+                    new VehicleInfo
+                    {
+                        VehicleType = "minicopter",
+                        PrefabPaths = new string[] { "assets/content/vehicles/minicopter/minicopter.entity.prefab" },
+                        LockPosition = new Vector3(-0.15f, 0.7f, -0.1f),
+                    },
+                    new VehicleInfo
+                    {
+                        VehicleType = "modularcar",
+                        PrefabPaths = new string[]
+                        {
+                            "assets/content/vehicles/modularcar/car_chassis_2module.entity.prefab",
+                            "assets/content/vehicles/modularcar/car_chassis_3module.entity.prefab",
+                            "assets/content/vehicles/modularcar/car_chassis_4module.entity.prefab",
+                            "assets/content/vehicles/modularcar/2module_car_spawned.entity.prefab",
+                            "assets/content/vehicles/modularcar/3module_car_spawned.entity.prefab",
+                            "assets/content/vehicles/modularcar/4module_car_spawned.entity.prefab",
+                        },
+                        LockPosition = new Vector3(-0.9f, 0.35f, -0.5f),
+                        DetermineLockParent = (vehicle) => FindFirstDriverModule((ModularCar)vehicle),
+                    },
+                    new VehicleInfo
+                    {
+                        VehicleType = "rhib",
+                        PrefabPaths = new string[] { "assets/content/vehicles/boats/rhib/rhib.prefab" },
+                        LockPosition = new Vector3(-0.68f, 2.00f, 0.7f),
+                    },
+                    new VehicleInfo
+                    {
+                        VehicleType = "ridablehorse",
+                        PrefabPaths = new string[] { "assets/rust.ai/nextai/testridablehorse.prefab" },
+                        LockPosition = new Vector3(-0.6f, 0.35f, -0.1f),
+                        LockRotation = Quaternion.Euler(0, 95, 90),
+                        ParentBone = "Horse_RootBone",
+                    },
+                    new VehicleInfo
+                    {
+                        VehicleType = "rowboat",
+                        PrefabPaths = new string[] { "assets/content/vehicles/boats/rowboat/rowboat.prefab" },
+                        LockPosition = new Vector3(-0.83f, 0.51f, -0.57f),
+                    },
+                    new VehicleInfo
+                    {
+                        VehicleType = "scraptransport",
+                        PrefabPaths = new string[] { "assets/content/vehicles/scrap heli carrier/scraptransporthelicopter.prefab" },
+                        LockPosition = new Vector3(-1.25f, 1.22f, 1.99f),
+                    },
+                    new VehicleInfo
+                    {
+                        VehicleType = "sedan",
+                        PrefabPaths = new string[] { "assets/content/vehicles/sedan_a/sedantest.entity.prefab" },
+                        LockPosition = new Vector3(-1.09f, 0.79f, 0.5f),
+                    },
+                    new VehicleInfo
+                    {
+                        VehicleType = "solosub",
+                        PrefabPaths = new string[] { "assets/content/vehicles/submarine/submarinesolo.entity.prefab" },
+                        LockPosition = new Vector3(0f, 1.85f, 0f),
+                        LockRotation = Quaternion.Euler(0, 90, 90),
+                    },
+                    new VehicleInfo
+                    {
+                        VehicleType = "workcart",
+                        PrefabPaths = new string[] { "assets/content/vehicles/workcart/workcart.entity.prefab" },
+                        LockPosition = new Vector3(-0.2f, 2.35f, 2.7f),
+                    },
+                };
+
+                foreach (var vehicleInfo in allVehicles)
+                {
+                    vehicleInfo.OnServerInitialized(pluginInstance);
+                    foreach (var prefabId in vehicleInfo.PrefabIds)
+                    {
+                        _prefabIdToVehicleInfo[prefabId] = vehicleInfo;
+                    }
+                }
             }
 
-            return null;
+            public void RegisterCustomVehicleType(VehicleDeployedLocks pluginInstance, VehicleInfo vehicleInfo)
+            {
+                if (_customVehicleTypes.ContainsKey(vehicleInfo.VehicleType))
+                    return;
+
+                vehicleInfo.OnServerInitialized(pluginInstance);
+                _customVehicleTypes[vehicleInfo.VehicleType] = vehicleInfo;
+            }
+
+            public VehicleInfo GetVehicleInfo(BaseEntity entity)
+            {
+                VehicleInfo vehicleInfo;
+                if (_prefabIdToVehicleInfo.TryGetValue(entity.prefabID, out vehicleInfo))
+                    return vehicleInfo;
+
+                foreach (var customVehicleInfo in _customVehicleTypes.Values)
+                {
+                    if (customVehicleInfo.DetermineLockParent(entity) != null)
+                        return customVehicleInfo;
+                }
+
+                return null;
+            }
+
+            public BaseEntity GetCustomVehicleParent(BaseEntity entity)
+            {
+                foreach (var vehicleInfo in _customVehicleTypes.Values)
+                {
+                    var lockParent = vehicleInfo.DetermineLockParent(entity);
+                    if (lockParent != null)
+                        return lockParent;
+                }
+
+                return null;
+            }
         }
 
         #endregion
