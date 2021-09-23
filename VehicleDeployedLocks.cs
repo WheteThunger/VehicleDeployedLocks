@@ -598,11 +598,19 @@ namespace Oxide.Plugins
 
         private BaseLock DeployLockForPlayer(BaseEntity vehicle, VehicleInfo vehicleInfo, LockInfo lockInfo, BasePlayer player, PayType payType)
         {
+            var originalVehicleOwnerId = vehicle.OwnerID;
+
+            // Temporarily set the player as the owner of the vehicle, for compatibility with AutoCodeLock (OnItemDeployed).
+            vehicle.OwnerID = player.userID;
+
             var baseLock = DeployLock(vehicle, vehicleInfo, lockInfo, player.userID);
             if (baseLock == null)
+            {
+                vehicle.OwnerID = originalVehicleOwnerId;
                 return null;
+            }
 
-            // Allow other plugins to detect the code lock being deployed (e.g., auto lock)
+            // Allow other plugins to detect the code lock being deployed (e.g., to auto lock).
             var lockItem = GetPlayerLockItem(player, lockInfo);
             if (lockItem != null)
             {
@@ -610,7 +618,7 @@ namespace Oxide.Plugins
             }
             else
             {
-                // Temporarily increase the player inventory capacity to ensure there is enough space
+                // Temporarily increase the player inventory capacity to ensure there is enough space.
                 player.inventory.containerMain.capacity++;
                 var temporaryLockItem = ItemManager.CreateByItemID(lockInfo.ItemId);
                 if (player.inventory.GiveItem(temporaryLockItem))
@@ -621,6 +629,9 @@ namespace Oxide.Plugins
                 temporaryLockItem.Remove();
                 player.inventory.containerMain.capacity--;
             }
+
+            // Revert the vehicle owner to the original, after OnItemDeployed is called.
+            vehicle.OwnerID = originalVehicleOwnerId;
 
             MaybeChargePlayerForLock(player, lockInfo, payType);
             return baseLock;
