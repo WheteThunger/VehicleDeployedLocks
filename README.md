@@ -85,6 +85,13 @@ The following permissions allow players to deploy key locks to vehicles.
     "ClanOrAlly": false,
     "Friends": false,
     "Team": false
+  },
+  "AutoUnlockIdleVehicles": {
+    "Enabled": false,
+    "IdleSeconds": 3600,
+    "CheckIntervalSeconds": 300,
+    "ExemptOwnedVehicles": true,
+    "ExemptNearTC": true
   }
 }
 ```
@@ -96,6 +103,12 @@ The following permissions allow players to deploy key locks to vehicles.
 - `ModularCarSettings`
   - `AllowEditingWhileLockedOut` -- Whether to allow players to edit a car at a lift while they are not authorized to the car's lock. This is `true` by default to be consistent with the vanilla car locks which allow players to edit the car (which likely allows removal of the lock). Setting this to `false` will make it impossible for unauthorized players to edit the car.
 - `DefaultSharingSettings` (each `true` or `false`) -- Whether to allow players to bypass locks placed by their clanmates, ally clanmates, friends or teammates. More advanced sharing (such as players being in control of these settings) can be achieved via compatible sharing plugins.
+- `AutoUnlockIdleVehicles` -- Settings to automatically detect idle vehicles and unlock them.
+  - `Enabled` (`true` or `false`) -- While `true`, vehicles will periodically be checked for idleness and potentially unlocked.
+  - `IdleSeconds` -- Determines how long after a vehicle has been used that it will be considered idle. Supports all vehicles **except** Sedan which does not track activity information in vanilla.
+  - `CheckIntervalSeconds` -- How often to check vehicles for idleness.
+  - `ExemptOwnedVehicles` -- While `true`, owned vehicles are exempt from idleness checks.
+  - `ExemptNearTC` -- While `true`, vehicles near TCs are exempt from idleness checks.
 
 ## Localization
 
