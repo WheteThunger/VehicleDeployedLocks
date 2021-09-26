@@ -1311,6 +1311,24 @@ namespace Oxide.Plugins
                 [Lang.DeployErrorModularCarNoCockpit] = "Error: That car needs a cockpit module to receive a lock.",
                 [Lang.DeployErrorDistance] = "Error: Too far away."
             }, this, "en");
+            // Adding Brazilian Portuguese translation
+            lang.RegisterMessages(new Dictionary<string, string>
+            {
+                [Lang.GenericErrorNoPermission] = "Você não tem permissão para fazer isso.",
+                [Lang.GenericErrorBuildingBlocked] = "Erro: Não é possível fazer isso enquanto o edifício está bloqueado.",
+                [Lang.GenericErrorCooldown] = "Aguarde <color=red>{0} seg</color> e tente novamente.",
+                [Lang.GenericErrorVehicleLocked] = "Esse veículo está trancado.",
+                [Lang.DeployErrorNoVehicleFound] = "Erro: Nenhum veículo encontrado.",
+                [Lang.DeployErrorVehicleDead] = "Erro: esse veículo está destruido.",
+                [Lang.DeployErrorDifferentOwner] = "Erro: outra pessoa é proprietária desse veículo.",
+                [Lang.DeployErrorNoOwner] = "Erro: você não possui esse veículo.",
+                [Lang.DeployErrorNoOwnerRequiresTC] = "Erro: o bloqueio de veículos sem proprietário requer privilégio de construção.",
+                [Lang.DeployErrorHasLock] = "Erro: esse veículo já tem fechadura.",
+                [Lang.DeployErrorInsufficientResources] = "Erro: recursos insuficientes para criar um {0}.",
+                [Lang.DeployErrorMounted] = "Erro: esse veículo está ocupado no momento.",
+                [Lang.DeployErrorModularCarNoCockpit] = "Erro: esse carro precisa de um módulo de cabine para receber um bloqueio.",
+                [Lang.DeployErrorDistance] = "Erro: muito longe."
+            }, this, "pt-BR");
         }
 
         #endregion
