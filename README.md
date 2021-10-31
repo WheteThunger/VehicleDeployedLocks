@@ -76,6 +76,7 @@ The following permissions allow players to deploy key locks to vehicles.
   "AllowIfDifferentOwner": false,
   "AllowIfNoOwner": true,
   "RequireTCIfNoOwner": false,
+  "AllowPushWhileLockedOut": true,
   "CraftCooldownSeconds": 10.0,
   "ModularCarSettings": {
     "AllowEditingWhileLockedOut": true
@@ -99,6 +100,7 @@ The following permissions allow players to deploy key locks to vehicles.
 - `AllowIfDifferentOwner` (`true` or `false`) -- Whether to allow players to deploy a lock onto a vehicle owned by someone else (i.e., a vehicle whose `OwnerID` is a different player's Steam ID). Such vehicles are likely spawned by a plugin, or a plugin allowed the player to claim that vehicle. This is `false` by default to protect owned vehicles from having locks deployed onto them by others. Note: If the owner leaves a code lock unlocked, another player can still lock it with a custom code to lock out the owner.
 - `AllowIfNoOwner` (`true` or `false`) -- Whether to allow players to deploy a lock onto a vehicle that has no owner (i.e., `OwnerID` is `0`), which usually describes vehicles that spawned naturally in the world, though some plugins may spawn vehicles with no owner as well. Note: Vehicles spawned at NPC vendors have no owner by default, unless set by a plugin such as [Vehicle Vendor Options](https://umod.org/plugins/vehicle-vendor-options). You can also use the [Claim Vehicle Ownership](https://umod.org/plugins/claim-vehicle-ownership) plugin to allow players to claim unowned vehicles with an optional cooldown.
 - `RequireTCIfNoOwner` (`true` or `false`) -- Whether to require players to be within TC radius to deploy a lock onto an **unowned** vehicle.
+- `AllowPushWhileLockedOut` (`true` or `false`) -- Whether to allow players to push a vehicle while they are not authorized to the vehicle's lock. This is `true` by default to be consistent with vanilla behavior.
 - `CraftCooldownSeconds` -- Cooldown for players to craft a lock if they don't have one in their inventory. Since players can pickup vehicle-deployed locks (by design), this cooldown prevents players from effectively making locks faster than they could normally craft them. Configure this based on the crafting speed of locks on your server.
 - `ModularCarSettings`
   - `AllowEditingWhileLockedOut` -- Whether to allow players to edit a car at a lift while they are not authorized to the car's lock. This is `true` by default to be consistent with the vanilla car locks which allow players to edit the car (which likely allows removal of the lock). Setting this to `false` will make it impossible for unauthorized players to edit the car.

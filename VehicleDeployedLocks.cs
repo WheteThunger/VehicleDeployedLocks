@@ -11,7 +11,7 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("Vehicle Deployed Locks", "WhiteThunder", "1.5.0")]
+    [Info("Vehicle Deployed Locks", "WhiteThunder", "1.6.0")]
     [Description("Allows players to deploy code locks and key locks to vehicles.")]
     internal class VehicleDeployedLocks : CovalencePlugin
     {
@@ -55,6 +55,9 @@ namespace Oxide.Plugins
 
             _craftKeyLockCooldowns = new CooldownManager(_pluginConfig.CraftCooldownSeconds);
             _craftCodeLockCooldowns = new CooldownManager(_pluginConfig.CraftCooldownSeconds);
+
+            if (_pluginConfig.AllowPushWhileLockedOut)
+                Unsubscribe(nameof(OnVehiclePush));
 
             Unsubscribe(nameof(OnEntityKill));
         }
@@ -152,6 +155,9 @@ namespace Oxide.Plugins
 
             return CanPlayerInteractWithParentVehicle(player, carSeat, provideFeedback: false);
         }
+
+        private bool? OnVehiclePush(BaseVehicle vehicle, BasePlayer player) =>
+            CanPlayerInteractWithVehicle(player, vehicle);
 
         private void OnEntityKill(BaseLock baseLock)
         {
@@ -1349,6 +1355,9 @@ namespace Oxide.Plugins
 
             [JsonProperty("RequireTCIfNoOwner")]
             public bool RequireTCIfNoOwner = false;
+
+            [JsonProperty("AllowPushWhileLockedOut")]
+            public bool AllowPushWhileLockedOut = true;
 
             [JsonProperty("CraftCooldownSeconds")]
             public float CraftCooldownSeconds = 10;
