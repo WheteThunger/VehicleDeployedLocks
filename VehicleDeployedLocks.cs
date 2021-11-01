@@ -873,8 +873,11 @@ namespace Oxide.Plugins
                 CodeLockPermission = $"{Permission_CodeLock_Prefix}.{VehicleType}";
                 KeyLockPermission = $"{Permission_KeyLock_Prefix}.{VehicleType}";
 
-                pluginInstance.permission.RegisterPermission(CodeLockPermission, pluginInstance);
-                pluginInstance.permission.RegisterPermission(KeyLockPermission, pluginInstance);
+                if (!pluginInstance.permission.PermissionExists(CodeLockPermission, pluginInstance))
+                    pluginInstance.permission.RegisterPermission(CodeLockPermission, pluginInstance);
+
+                if (!pluginInstance.permission.PermissionExists(KeyLockPermission, pluginInstance))
+                    pluginInstance.permission.RegisterPermission(KeyLockPermission, pluginInstance);
 
                 // Custom vehicles aren't currently allowed to specify prefabs since they reuse existing prefabs.
                 if (PrefabPaths != null)
@@ -1043,9 +1046,6 @@ namespace Oxide.Plugins
 
             public void RegisterCustomVehicleType(VehicleDeployedLocks pluginInstance, VehicleInfo vehicleInfo)
             {
-                if (_customVehicleTypes.ContainsKey(vehicleInfo.VehicleType))
-                    return;
-
                 vehicleInfo.OnServerInitialized(pluginInstance);
                 _customVehicleTypes[vehicleInfo.VehicleType] = vehicleInfo;
             }
