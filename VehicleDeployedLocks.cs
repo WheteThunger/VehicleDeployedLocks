@@ -11,7 +11,7 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("Vehicle Deployed Locks", "WhiteThunder", "1.6.0")]
+    [Info("Vehicle Deployed Locks", "WhiteThunder", "1.6.1")]
     [Description("Allows players to deploy code locks and key locks to vehicles.")]
     internal class VehicleDeployedLocks : CovalencePlugin
     {
@@ -436,12 +436,13 @@ namespace Oxide.Plugins
             if (parent == null)
                 return null;
 
-            if (parent is HotAirBalloon || parent is BaseVehicle)
-                return parent;
-
+            // Check for a vehicle module first since they are considered vehicles.
             var parentModule = parent as BaseVehicleModule;
             if (parentModule != null)
                 return parentModule.Vehicle;
+
+            if (parent is HotAirBalloon || parent is BaseVehicle)
+                return parent;
 
             return _vehicleInfoManager.GetCustomVehicleParent(entity);
         }
