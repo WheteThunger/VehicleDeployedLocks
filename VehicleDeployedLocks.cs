@@ -11,7 +11,7 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("Vehicle Deployed Locks", "WhiteThunder", "1.6.1")]
+    [Info("Vehicle Deployed Locks", "WhiteThunder", "1.7.0")]
     [Description("Allows players to deploy code locks and key locks to vehicles.")]
     internal class VehicleDeployedLocks : CovalencePlugin
     {
@@ -1020,11 +1020,23 @@ namespace Oxide.Plugins
                     },
                     new VehicleInfo
                     {
+                        VehicleType = "snowmobile",
+                        PrefabPaths = new string[] { "assets/content/vehicles/snowmobiles/snowmobile.prefab" },
+                        LockPosition = new Vector3(-0.205f, 0.59f, 0.4f),
+                    },
+                    new VehicleInfo
+                    {
                         VehicleType = "solosub",
                         PrefabPaths = new string[] { "assets/content/vehicles/submarine/submarinesolo.entity.prefab" },
                         LockPosition = new Vector3(0f, 1.85f, 0f),
                         LockRotation = Quaternion.Euler(0, 90, 90),
                         TimeSinceLastUsed = (vehicle) => (vehicle as BaseSubmarine)?.timeSinceLastUsed ?? 0,
+                    },
+                    new VehicleInfo
+                    {
+                        VehicleType = "tomaha",
+                        PrefabPaths = new string[] { "assets/content/vehicles/snowmobiles/tomahasnowmobile.prefab" },
+                        LockPosition = new Vector3(-0.37f, 0.4f, 0.125f),
                     },
                     new VehicleInfo
                     {
