@@ -45,7 +45,9 @@ The following permissions allow players to deploy code locks to vehicles.
 - `vehicledeployedlocks.codelock.ridablehorse`
 - `vehicledeployedlocks.codelock.scraptransport`
 - `vehicledeployedlocks.codelock.sedan`
+- `vehicledeployedlocks.codelock.snowmobile`
 - `vehicledeployedlocks.codelock.solosub`
+- `vehicledeployedlocks.codelock.tomaha`
 - `vehicledeployedlocks.codelock.workcart`
 
 ### Key Locks
@@ -66,7 +68,9 @@ The following permissions allow players to deploy key locks to vehicles.
 - `vehicledeployedlocks.keylock.rowboat`
 - `vehicledeployedlocks.keylock.scraptransport`
 - `vehicledeployedlocks.keylock.sedan`
+- `vehicledeployedlocks.keylock.snowmobile`
 - `vehicledeployedlocks.keylock.solosub`
+- `vehicledeployedlocks.keylock.tomaha`
 - `vehicledeployedlocks.keylock.workcart`
 
 ## Configuration
