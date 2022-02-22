@@ -424,8 +424,10 @@ namespace Oxide.Plugins
                 return false;
             }
 
-            if (provideFeedback && baseLock.IsLocked())
+            if (provideFeedback && baseLock.IsLocked() && !(baseLock is KeyLock))
+            {
                 Effect.server.Run(Prefab_CodeLock_UnlockEffect, baseLock, 0, Vector3.zero, Vector3.forward);
+            }
 
             return null;
         }
