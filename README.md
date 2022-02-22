@@ -126,6 +126,7 @@ The following permissions allow players to deploy key locks to vehicles.
   "Generic.Error.VehicleLocked": "That vehicle is locked.",
   "Deploy.Error.NoVehicleFound": "Error: No vehicle found.",
   "Deploy.Error.VehicleDead": "Error: That vehicle is dead.",
+  "Deploy.Error.Other": "Error: You cannot do that.",
   "Deploy.Error.DifferentOwner": "Error: Someone else owns that vehicle.",
   "Deploy.Error.NoOwner": "Error: You do not own that vehicle.",
   "Deploy.Error.NoOwner.NoBuildingPrivilege": "Error: Locking unowned vehicles requires building privilege.",
