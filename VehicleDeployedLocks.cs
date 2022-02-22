@@ -11,7 +11,7 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("Vehicle Deployed Locks", "WhiteThunder", "1.7.0")]
+    [Info("Vehicle Deployed Locks", "WhiteThunder", "1.7.1")]
     [Description("Allows players to deploy code locks and key locks to vehicles.")]
     internal class VehicleDeployedLocks : CovalencePlugin
     {
@@ -746,6 +746,16 @@ namespace Oxide.Plugins
             return false;
         }
 
+        private bool VerifyNotForSale(IPlayer player, BaseEntity vehicle)
+        {
+            var ridableAnimal = vehicle as BaseRidableAnimal;
+            if (ridableAnimal == null || !ridableAnimal.IsForSale())
+                return true;
+
+            ReplyToPlayer(player, Lang.DeployErrorOther);
+            return false;
+        }
+
         private bool VerifyNoOwnershipRestriction(IPlayer player, BaseEntity vehicle)
         {
             if (!AllowNoOwner(vehicle))
@@ -843,6 +853,7 @@ namespace Oxide.Plugins
 
             return VerifyPermissionToVehicleAndLockType(player, vehicleInfo, lockInfo)
                 && VerifyVehicleIsNotDead(player, vehicle)
+                && VerifyNotForSale(player, vehicle)
                 && VerifyNoOwnershipRestriction(player, vehicle)
                 && VerifyCanBuild(player, vehicle)
                 && VerifyVehicleHasNoLock(player, vehicle)
@@ -1522,6 +1533,7 @@ namespace Oxide.Plugins
             public const string GenericErrorVehicleLocked = "Generic.Error.VehicleLocked";
             public const string DeployErrorNoVehicleFound = "Deploy.Error.NoVehicleFound";
             public const string DeployErrorVehicleDead = "Deploy.Error.VehicleDead";
+            public const string DeployErrorOther = "Deploy.Error.Other";
             public const string DeployErrorDifferentOwner = "Deploy.Error.DifferentOwner";
             public const string DeployErrorNoOwner = "Deploy.Error.NoOwner";
             public const string DeployErrorNoOwnerRequiresTC = "Deploy.Error.NoOwner.NoBuildingPrivilege";
@@ -1542,6 +1554,7 @@ namespace Oxide.Plugins
                 [Lang.GenericErrorVehicleLocked] = "That vehicle is locked.",
                 [Lang.DeployErrorNoVehicleFound] = "Error: No vehicle found.",
                 [Lang.DeployErrorVehicleDead] = "Error: That vehicle is dead.",
+                [Lang.DeployErrorOther] = "Error: You cannot do that.",
                 [Lang.DeployErrorDifferentOwner] = "Error: Someone else owns that vehicle.",
                 [Lang.DeployErrorNoOwner] = "Error: You do not own that vehicle.",
                 [Lang.DeployErrorNoOwnerRequiresTC] = "Error: Locking unowned vehicles requires building privilege.",
@@ -1551,7 +1564,7 @@ namespace Oxide.Plugins
                 [Lang.DeployErrorModularCarNoCockpit] = "Error: That car needs a cockpit module to receive a lock.",
                 [Lang.DeployErrorDistance] = "Error: Too far away."
             }, this, "en");
-            // Adding Brazilian Portuguese translation
+
             lang.RegisterMessages(new Dictionary<string, string>
             {
                 [Lang.GenericErrorNoPermission] = "Você não tem permissão para fazer isso.",
@@ -1560,6 +1573,7 @@ namespace Oxide.Plugins
                 [Lang.GenericErrorVehicleLocked] = "Esse veículo está trancado.",
                 [Lang.DeployErrorNoVehicleFound] = "Erro: Nenhum veículo encontrado.",
                 [Lang.DeployErrorVehicleDead] = "Erro: esse veículo está destruido.",
+                [Lang.DeployErrorOther] = "Erro: Você não pode fazer isso.",
                 [Lang.DeployErrorDifferentOwner] = "Erro: outra pessoa é proprietária desse veículo.",
                 [Lang.DeployErrorNoOwner] = "Erro: você não possui esse veículo.",
                 [Lang.DeployErrorNoOwnerRequiresTC] = "Erro: o bloqueio de veículos sem proprietário requer privilégio de construção.",
