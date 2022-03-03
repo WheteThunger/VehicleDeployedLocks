@@ -970,7 +970,7 @@ namespace Oxide.Plugins
                         LockPosition = new Vector3(-1.735f, -1.445f, 0.79f),
                         LockRotation = Quaternion.Euler(0, 0, 90),
                         ParentBone = "Top",
-                        TimeSinceLastUsed = (vehicle) => Time.realtimeSinceStartup - (vehicle as BaseCrane)?.lastDrivenTime ?? Time.realtimeSinceStartup,
+                        TimeSinceLastUsed = (vehicle) => Time.realtimeSinceStartup - (vehicle as MagnetCrane)?.lastDrivenTime ?? Time.realtimeSinceStartup,
                     },
                     new VehicleInfo
                     {
