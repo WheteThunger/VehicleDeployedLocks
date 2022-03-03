@@ -1036,6 +1036,7 @@ namespace Oxide.Plugins
                         VehicleType = "snowmobile",
                         PrefabPaths = new string[] { "assets/content/vehicles/snowmobiles/snowmobile.prefab" },
                         LockPosition = new Vector3(-0.205f, 0.59f, 0.4f),
+                        TimeSinceLastUsed = (vehicle) => (vehicle as Snowmobile)?.timeSinceLastUsed ?? 0,
                     },
                     new VehicleInfo
                     {
@@ -1050,6 +1051,7 @@ namespace Oxide.Plugins
                         VehicleType = "tomaha",
                         PrefabPaths = new string[] { "assets/content/vehicles/snowmobiles/tomahasnowmobile.prefab" },
                         LockPosition = new Vector3(-0.37f, 0.4f, 0.125f),
+                        TimeSinceLastUsed = (vehicle) => (vehicle as Snowmobile)?.timeSinceLastUsed ?? 0,
                     },
                     new VehicleInfo
                     {
