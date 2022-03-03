@@ -40,6 +40,8 @@ namespace Oxide.Plugins
         private readonly AutoUnlockManager _lockExpirationManager = new AutoUnlockManager();
         private readonly ReskinManager _reskinManager;
 
+        private object _boxedFalse = false;
+
         private enum PayType { Item, Resources, Free }
 
         public VehicleDeployedLocks()
@@ -77,7 +79,7 @@ namespace Oxide.Plugins
             Subscribe(nameof(OnEntityKill));
         }
 
-        private bool? CanMountEntity(BasePlayer player, BaseMountable entity)
+        private object CanMountEntity(BasePlayer player, BaseMountable entity)
         {
             // Don't lock taxi modules
             var carSeat = entity as ModularCarSeat;
@@ -87,7 +89,7 @@ namespace Oxide.Plugins
             return CanPlayerInteractWithParentVehicle(player, entity);
         }
 
-        private bool? CanLootEntity(BasePlayer player, StorageContainer container)
+        private object CanLootEntity(BasePlayer player, StorageContainer container)
         {
             // Don't lock taxi module shop fronts
             if (container is ModularVehicleShopFront)
@@ -96,13 +98,13 @@ namespace Oxide.Plugins
             return CanPlayerInteractWithParentVehicle(player, container);
         }
 
-        private bool? CanLootEntity(BasePlayer player, ContainerIOEntity container) =>
+        private object CanLootEntity(BasePlayer player, ContainerIOEntity container) =>
             CanPlayerInteractWithParentVehicle(player, container);
 
-        private bool? CanLootEntity(BasePlayer player, RidableHorse horse) =>
+        private object CanLootEntity(BasePlayer player, RidableHorse horse) =>
             CanPlayerInteractWithVehicle(player, horse);
 
-        private bool? CanLootEntity(BasePlayer player, ModularCarGarage carLift)
+        private object CanLootEntity(BasePlayer player, ModularCarGarage carLift)
         {
             if (carLift == null
                 || _pluginConfig.ModularCarSettings.AllowEditingWhileLockedOut
@@ -112,13 +114,13 @@ namespace Oxide.Plugins
             return CanPlayerInteractWithVehicle(player, carLift.carOccupant);
         }
 
-        private bool? OnHorseLead(RidableHorse horse, BasePlayer player) =>
+        private object OnHorseLead(RidableHorse horse, BasePlayer player) =>
             CanPlayerInteractWithVehicle(player, horse);
 
-        private bool? OnHotAirBalloonToggle(HotAirBalloon hab, BasePlayer player) =>
+        private object OnHotAirBalloonToggle(HotAirBalloon hab, BasePlayer player) =>
             CanPlayerInteractWithVehicle(player, hab);
 
-        private bool? OnSwitchToggle(ElectricSwitch electricSwitch, BasePlayer player)
+        private object OnSwitchToggle(ElectricSwitch electricSwitch, BasePlayer player)
         {
             if (electricSwitch == null)
                 return null;
@@ -130,10 +132,10 @@ namespace Oxide.Plugins
             return null;
         }
 
-        private bool? OnTurretAuthorize(AutoTurret entity, BasePlayer player) =>
+        private object OnTurretAuthorize(AutoTurret entity, BasePlayer player) =>
             CanPlayerInteractWithParentVehicle(player, entity);
 
-        private bool? OnTurretTarget(AutoTurret autoTurret, BasePlayer player)
+        private object OnTurretTarget(AutoTurret autoTurret, BasePlayer player)
         {
             if (autoTurret == null || player == null)
                 return null;
@@ -148,12 +150,12 @@ namespace Oxide.Plugins
                 return null;
 
             if (CanPlayerBypassLock(player, baseLock, provideFeedback: false))
-                return false;
+                return _boxedFalse;
 
             return null;
         }
 
-        private bool? CanSwapToSeat(BasePlayer player, ModularCarSeat carSeat)
+        private object CanSwapToSeat(BasePlayer player, ModularCarSeat carSeat)
         {
             // Don't lock taxi modules
             if (!carSeat.associatedSeatingModule.DoorsAreLockable)
@@ -162,7 +164,7 @@ namespace Oxide.Plugins
             return CanPlayerInteractWithParentVehicle(player, carSeat, provideFeedback: false);
         }
 
-        private bool? OnVehiclePush(BaseVehicle vehicle, BasePlayer player) =>
+        private object OnVehiclePush(BaseVehicle vehicle, BasePlayer player) =>
             CanPlayerInteractWithVehicle(player, vehicle);
 
         private void OnEntityKill(BaseLock baseLock)
@@ -215,7 +217,7 @@ namespace Oxide.Plugins
         }
 
         // Allow players to deploy locks directly without any commands.
-        private bool? CanDeployItem(BasePlayer basePlayer, Deployer deployer, uint entityId)
+        private object CanDeployItem(BasePlayer basePlayer, Deployer deployer, uint entityId)
         {
             if (basePlayer == null || deployer == null)
                 return null;
@@ -254,13 +256,13 @@ namespace Oxide.Plugins
             PayType payType;
             if (!VerifyCanDeploy(player, vehicle, vehicleInfo, lockInfo, out payType)
                 || !VerifyDeployDistance(player, vehicle))
-                return false;
+                return _boxedFalse;
 
             DeployLockForPlayer(vehicle, vehicleInfo, lockInfo, basePlayer, payType);
-            return false;
+            return _boxedFalse;
         }
 
-        private bool? OnEntityReskin(Snowmobile snowmobile, ItemSkinDirectory.Skin skin, BasePlayer player)
+        private object OnEntityReskin(Snowmobile snowmobile, ItemSkinDirectory.Skin skin, BasePlayer player)
         {
             var baseLock = GetVehicleLock(snowmobile);
             if (baseLock == null)
@@ -270,7 +272,7 @@ namespace Oxide.Plugins
                 return null;
 
             if (baseLock.IsLocked() && !CanPlayerBypassLock(player, baseLock, provideFeedback: true))
-                return false;
+                return _boxedFalse;
 
             _reskinManager.HandleReskinPre(snowmobile, baseLock);
 
@@ -453,7 +455,7 @@ namespace Oxide.Plugins
             return false;
         }
 
-        private bool? CanPlayerInteractWithVehicle(BasePlayer player, BaseEntity vehicle, bool provideFeedback = true)
+        private object CanPlayerInteractWithVehicle(BasePlayer player, BaseEntity vehicle, bool provideFeedback = true)
         {
             if (player == null || vehicle == null)
                 return null;
@@ -465,7 +467,7 @@ namespace Oxide.Plugins
             if (CanPlayerBypassLock(player, baseLock, provideFeedback))
                 return null;
 
-            return false;
+            return _boxedFalse;
         }
 
         private BaseEntity GetParentVehicle(BaseEntity entity)
@@ -485,7 +487,7 @@ namespace Oxide.Plugins
             return _vehicleInfoManager.GetCustomVehicleParent(entity);
         }
 
-        private bool? CanPlayerInteractWithParentVehicle(BasePlayer player, BaseEntity entity, bool provideFeedback = true) =>
+        private object CanPlayerInteractWithParentVehicle(BasePlayer player, BaseEntity entity, bool provideFeedback = true) =>
             CanPlayerInteractWithVehicle(player, GetParentVehicle(entity), provideFeedback);
 
         #endregion
