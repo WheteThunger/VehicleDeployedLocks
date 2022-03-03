@@ -11,7 +11,7 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("Vehicle Deployed Locks", "WhiteThunder", "1.7.1")]
+    [Info("Vehicle Deployed Locks", "WhiteThunder", "1.7.2")]
     [Description("Allows players to deploy code locks and key locks to vehicles.")]
     internal class VehicleDeployedLocks : CovalencePlugin
     {
@@ -38,8 +38,14 @@ namespace Oxide.Plugins
         private readonly VehicleInfoManager _vehicleInfoManager = new VehicleInfoManager();
         private readonly LockedVehicleTracker _lockedVehicleTracker = new LockedVehicleTracker();
         private readonly AutoUnlockManager _lockExpirationManager = new AutoUnlockManager();
+        private readonly ReskinManager _reskinManager;
 
         private enum PayType { Item, Resources, Free }
+
+        public VehicleDeployedLocks()
+        {
+            _reskinManager = new ReskinManager(_vehicleInfoManager, _lockedVehicleTracker);
+        }
 
         #endregion
 
@@ -141,7 +147,7 @@ namespace Oxide.Plugins
             if (baseLock == null)
                 return null;
 
-            if (CanPlayerBypassLock(player, baseLock))
+            if (CanPlayerBypassLock(player, baseLock, provideFeedback: false))
                 return false;
 
             return null;
@@ -252,6 +258,31 @@ namespace Oxide.Plugins
 
             DeployLockForPlayer(vehicle, vehicleInfo, lockInfo, basePlayer, payType);
             return false;
+        }
+
+        private bool? OnEntityReskin(Snowmobile snowmobile, ItemSkinDirectory.Skin skin, BasePlayer player)
+        {
+            var baseLock = GetVehicleLock(snowmobile);
+            if (baseLock == null)
+                return null;
+
+            if (_vehicleInfoManager.GetVehicleInfo(snowmobile) == null)
+                return null;
+
+            if (baseLock.IsLocked() && !CanPlayerBypassLock(player, baseLock, provideFeedback: true))
+                return false;
+
+            _reskinManager.HandleReskinPre(snowmobile, baseLock);
+
+            // In case another plugin blocks the pre-hook, add back or destroy the lock.
+            NextTick(_reskinManager.CleanupAction);
+
+            return null;
+        }
+
+        private void OnEntityReskinned(Snowmobile snowmobile, ItemSkinDirectory.Skin skin, BasePlayer player)
+        {
+            _reskinManager.HandleReskinPost(snowmobile);
         }
 
         #endregion
@@ -393,15 +424,33 @@ namespace Oxide.Plugins
             return false;
         }
 
-        private bool CanPlayerBypassLock(BasePlayer player, BaseLock baseLock)
+        private bool CanPlayerBypassLock(BasePlayer player, BaseLock baseLock, bool provideFeedback)
         {
             object hookResult = Interface.CallHook("CanUseLockedEntity", player, baseLock);
             if (hookResult is bool)
                 return (bool)hookResult;
 
-            return IsPlayerAuthorizedToLock(player, baseLock)
+            var canAccessLock = IsPlayerAuthorizedToLock(player, baseLock)
                 || IsLockSharedWithPlayer(player, baseLock)
                 || PlayerHasMasterKeyForLock(player, baseLock);
+
+            if (canAccessLock)
+            {
+                if (provideFeedback && !(baseLock is KeyLock))
+                {
+                    Effect.server.Run(Prefab_CodeLock_UnlockEffect, baseLock, 0, Vector3.zero, Vector3.forward);
+                }
+
+                return true;
+            }
+
+            if (provideFeedback)
+            {
+                Effect.server.Run(Prefab_CodeLock_DeniedEffect, baseLock, 0, Vector3.zero, Vector3.forward);
+                ChatMessage(player, Lang.GenericErrorVehicleLocked);
+            }
+
+            return false;
         }
 
         private bool? CanPlayerInteractWithVehicle(BasePlayer player, BaseEntity vehicle, bool provideFeedback = true)
@@ -413,23 +462,10 @@ namespace Oxide.Plugins
             if (baseLock == null || !baseLock.IsLocked())
                 return null;
 
-            if (!CanPlayerBypassLock(player, baseLock))
-            {
-                if (provideFeedback)
-                {
-                    Effect.server.Run(Prefab_CodeLock_DeniedEffect, baseLock, 0, Vector3.zero, Vector3.forward);
-                    ChatMessage(player, Lang.GenericErrorVehicleLocked);
-                }
+            if (CanPlayerBypassLock(player, baseLock, provideFeedback))
+                return null;
 
-                return false;
-            }
-
-            if (provideFeedback && baseLock.IsLocked() && !(baseLock is KeyLock))
-            {
-                Effect.server.Run(Prefab_CodeLock_UnlockEffect, baseLock, 0, Vector3.zero, Vector3.forward);
-            }
-
-            return null;
+            return false;
         }
 
         private BaseEntity GetParentVehicle(BaseEntity entity)
@@ -861,6 +897,140 @@ namespace Oxide.Plugins
                 && VerifyPlayerCanDeployLock(player, lockInfo, out payType)
                 && VerifyNotMounted(player, vehicle, vehicleInfo)
                 && !DeployWasBlocked(vehicle, basePlayer, lockInfo);
+        }
+
+        #endregion
+
+        #region Reskin Management
+
+        private class ReskinEvent
+        {
+            public BaseEntity Entity;
+            public BaseLock BaseLock;
+            public Vector3 Position;
+
+            public bool IsAvailable() => Entity != null;
+
+            public void Assign(BaseEntity entity, BaseLock baseLock)
+            {
+                Entity = entity;
+                BaseLock = baseLock;
+                Position = entity?.transform.position ?? Vector3.zero;
+            }
+
+            public void Reset()
+            {
+                Assign(null, null);
+            }
+        }
+
+        private class ReskinManager
+        {
+            private VehicleInfoManager _vehicleInfoManager;
+            private LockedVehicleTracker _lockedVehicleTracker;
+
+            // Pool only a single reskin event since usually there will be at most a single event per frame.
+            private ReskinEvent _pooledReskinEvent;
+
+            // Keep track of all reskin events happening in a frame, in case there are multiple.
+            private List<ReskinEvent> _reskinEvents = new List<ReskinEvent>();
+
+            public readonly Action CleanupAction;
+
+            public ReskinManager(VehicleInfoManager vehicleInfoManager, LockedVehicleTracker lockedVehicleTracker)
+            {
+                _vehicleInfoManager = vehicleInfoManager;
+                _lockedVehicleTracker = lockedVehicleTracker;
+                CleanupAction = CleanupEvents;
+            }
+
+            public void HandleReskinPre(BaseEntity entity, BaseLock baseLock)
+            {
+                if (_pooledReskinEvent == null)
+                {
+                    _pooledReskinEvent = new ReskinEvent();
+                }
+
+                var reskinEvent = _pooledReskinEvent.Entity == null
+                    ? _pooledReskinEvent
+                    : new ReskinEvent();
+
+                // Unparent the lock to prevent it from being destroyed.
+                // It will later be parented to the newly spawned entity.
+                baseLock.SetParent(null);
+
+                reskinEvent.Assign(entity, baseLock);
+                _reskinEvents.Add(reskinEvent);
+            }
+
+            public void HandleReskinPost(BaseEntity entity)
+            {
+                var reskinEvent = FindReskinEventForPosition(entity.transform.position);
+                if (reskinEvent == null)
+                    return;
+
+                var baseLock = reskinEvent.BaseLock;
+                if (baseLock == null || baseLock.IsDestroyed)
+                    return;
+
+                var vehicleInfo = _vehicleInfoManager.GetVehicleInfo(entity);
+                if (vehicleInfo == null)
+                    return;
+
+                _reskinEvents.Remove(reskinEvent);
+
+                baseLock.SetParent(entity, vehicleInfo.ParentBone);
+                entity.SetSlot(BaseEntity.Slot.Lock, baseLock);
+                _lockedVehicleTracker.OnLockAdded(entity);
+
+                var lockTransform = baseLock.transform;
+                lockTransform.localPosition = vehicleInfo.LockPosition;
+                lockTransform.localRotation = vehicleInfo.LockRotation;
+                baseLock.SendNetworkUpdateImmediate();
+
+                if (reskinEvent == _pooledReskinEvent)
+                {
+                    reskinEvent.Reset();
+                }
+            }
+
+            private ReskinEvent FindReskinEventForPosition(Vector3 position)
+            {
+                foreach (var reskinEvent in _reskinEvents)
+                {
+                    if (reskinEvent.Position == position)
+                        return reskinEvent;
+                }
+
+                return null;
+            }
+
+            private void CleanupEvents()
+            {
+                if (_reskinEvents.Count == 0)
+                    return;
+
+                foreach (var reskinEvent in _reskinEvents)
+                {
+                    var baseLock = reskinEvent.BaseLock;
+                    if (baseLock == null || baseLock.IsDestroyed || baseLock.HasParent())
+                        continue;
+
+                    var entity = reskinEvent.Entity;
+                    if (entity != null && !entity.IsDestroyed)
+                    {
+                        // The reskin event must have been blocked, so reparent the lock to it.
+                        baseLock.SetParent(reskinEvent.Entity);
+                        continue;
+                    }
+
+                    // The post event wasn't called, and the original entity is gone, so destroy the lock.
+                    baseLock.Kill();
+                }
+
+                _pooledReskinEvent.Reset();
+                _reskinEvents.Clear();
+            }
         }
 
         #endregion
