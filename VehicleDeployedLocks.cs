@@ -35,9 +35,9 @@ namespace Oxide.Plugins
         private CooldownManager _craftCodeLockCooldowns;
         private CooldownManager _craftKeyLockCooldowns;
 
-        private readonly VehicleInfoManager _vehicleInfoManager = new VehicleInfoManager();
-        private readonly LockedVehicleTracker _lockedVehicleTracker = new LockedVehicleTracker();
-        private readonly AutoUnlockManager _lockExpirationManager = new AutoUnlockManager();
+        private readonly VehicleInfoManager _vehicleInfoManager;
+        private readonly LockedVehicleTracker _lockedVehicleTracker;
+        private readonly AutoUnlockManager _autoUnlockManager;
         private readonly ReskinManager _reskinManager;
 
         private object _boxedFalse = false;
@@ -46,6 +46,9 @@ namespace Oxide.Plugins
 
         public VehicleDeployedLocks()
         {
+            _vehicleInfoManager = new VehicleInfoManager(this);
+            _lockedVehicleTracker = new LockedVehicleTracker(_vehicleInfoManager);
+            _autoUnlockManager = new AutoUnlockManager(this, _lockedVehicleTracker);
             _reskinManager = new ReskinManager(_vehicleInfoManager, _lockedVehicleTracker);
         }
 
@@ -72,9 +75,9 @@ namespace Oxide.Plugins
 
         private void OnServerInitialized()
         {
-            _vehicleInfoManager.OnServerInitialized(this);
-            _lockedVehicleTracker.OnServerInitialized(_vehicleInfoManager);
-            _lockExpirationManager.OnServerInitialized(this, _lockedVehicleTracker, _pluginConfig.AutoUnlockSettings);
+            _vehicleInfoManager.OnServerInitialized();
+            _lockedVehicleTracker.OnServerInitialized();
+            _autoUnlockManager.OnServerInitialized(_pluginConfig.AutoUnlockSettings);
 
             Subscribe(nameof(OnEntityKill));
         }
@@ -903,140 +906,6 @@ namespace Oxide.Plugins
 
         #endregion
 
-        #region Reskin Management
-
-        private class ReskinEvent
-        {
-            public BaseEntity Entity;
-            public BaseLock BaseLock;
-            public Vector3 Position;
-
-            public bool IsAvailable() => Entity != null;
-
-            public void Assign(BaseEntity entity, BaseLock baseLock)
-            {
-                Entity = entity;
-                BaseLock = baseLock;
-                Position = entity?.transform.position ?? Vector3.zero;
-            }
-
-            public void Reset()
-            {
-                Assign(null, null);
-            }
-        }
-
-        private class ReskinManager
-        {
-            private VehicleInfoManager _vehicleInfoManager;
-            private LockedVehicleTracker _lockedVehicleTracker;
-
-            // Pool only a single reskin event since usually there will be at most a single event per frame.
-            private ReskinEvent _pooledReskinEvent;
-
-            // Keep track of all reskin events happening in a frame, in case there are multiple.
-            private List<ReskinEvent> _reskinEvents = new List<ReskinEvent>();
-
-            public readonly Action CleanupAction;
-
-            public ReskinManager(VehicleInfoManager vehicleInfoManager, LockedVehicleTracker lockedVehicleTracker)
-            {
-                _vehicleInfoManager = vehicleInfoManager;
-                _lockedVehicleTracker = lockedVehicleTracker;
-                CleanupAction = CleanupEvents;
-            }
-
-            public void HandleReskinPre(BaseEntity entity, BaseLock baseLock)
-            {
-                if (_pooledReskinEvent == null)
-                {
-                    _pooledReskinEvent = new ReskinEvent();
-                }
-
-                var reskinEvent = _pooledReskinEvent.Entity == null
-                    ? _pooledReskinEvent
-                    : new ReskinEvent();
-
-                // Unparent the lock to prevent it from being destroyed.
-                // It will later be parented to the newly spawned entity.
-                baseLock.SetParent(null);
-
-                reskinEvent.Assign(entity, baseLock);
-                _reskinEvents.Add(reskinEvent);
-            }
-
-            public void HandleReskinPost(BaseEntity entity)
-            {
-                var reskinEvent = FindReskinEventForPosition(entity.transform.position);
-                if (reskinEvent == null)
-                    return;
-
-                var baseLock = reskinEvent.BaseLock;
-                if (baseLock == null || baseLock.IsDestroyed)
-                    return;
-
-                var vehicleInfo = _vehicleInfoManager.GetVehicleInfo(entity);
-                if (vehicleInfo == null)
-                    return;
-
-                _reskinEvents.Remove(reskinEvent);
-
-                baseLock.SetParent(entity, vehicleInfo.ParentBone);
-                entity.SetSlot(BaseEntity.Slot.Lock, baseLock);
-                _lockedVehicleTracker.OnLockAdded(entity);
-
-                var lockTransform = baseLock.transform;
-                lockTransform.localPosition = vehicleInfo.LockPosition;
-                lockTransform.localRotation = vehicleInfo.LockRotation;
-                baseLock.SendNetworkUpdateImmediate();
-
-                if (reskinEvent == _pooledReskinEvent)
-                {
-                    reskinEvent.Reset();
-                }
-            }
-
-            private ReskinEvent FindReskinEventForPosition(Vector3 position)
-            {
-                foreach (var reskinEvent in _reskinEvents)
-                {
-                    if (reskinEvent.Position == position)
-                        return reskinEvent;
-                }
-
-                return null;
-            }
-
-            private void CleanupEvents()
-            {
-                if (_reskinEvents.Count == 0)
-                    return;
-
-                foreach (var reskinEvent in _reskinEvents)
-                {
-                    var baseLock = reskinEvent.BaseLock;
-                    if (baseLock == null || baseLock.IsDestroyed || baseLock.HasParent())
-                        continue;
-
-                    var entity = reskinEvent.Entity;
-                    if (entity != null && !entity.IsDestroyed)
-                    {
-                        // The reskin event must have been blocked, so reparent the lock to it.
-                        baseLock.SetParent(reskinEvent.Entity);
-                        continue;
-                    }
-
-                    // The post event wasn't called, and the original entity is gone, so destroy the lock.
-                    baseLock.Kill();
-                }
-
-                _pooledReskinEvent.Reset();
-                _reskinEvents.Clear();
-            }
-        }
-
-        #endregion
-
         #region Vehicle Info
 
         private class VehicleInfo
@@ -1098,10 +967,17 @@ namespace Oxide.Plugins
 
         private class VehicleInfoManager
         {
+            VehicleDeployedLocks _pluginInstance;
+
             private readonly Dictionary<uint, VehicleInfo> _prefabIdToVehicleInfo = new Dictionary<uint, VehicleInfo>();
             private readonly Dictionary<string, VehicleInfo> _customVehicleTypes = new Dictionary<string, VehicleInfo>();
 
-            public void OnServerInitialized(VehicleDeployedLocks pluginInstance)
+            public VehicleInfoManager(VehicleDeployedLocks pluginInstance)
+            {
+                _pluginInstance = pluginInstance;
+            }
+
+            public void OnServerInitialized()
             {
                 var allVehicles = new VehicleInfo[]
                 {
@@ -1236,7 +1112,7 @@ namespace Oxide.Plugins
 
                 foreach (var vehicleInfo in allVehicles)
                 {
-                    vehicleInfo.OnServerInitialized(pluginInstance);
+                    vehicleInfo.OnServerInitialized(_pluginInstance);
                     foreach (var prefabId in vehicleInfo.PrefabIds)
                     {
                         _prefabIdToVehicleInfo[prefabId] = vehicleInfo;
@@ -1317,17 +1193,20 @@ namespace Oxide.Plugins
 
         #endregion
 
-        #region Lock Vehicle Tracker
+        #region Locked Vehicle Tracker
 
         private class LockedVehicleTracker
         {
             private VehicleInfoManager _vehicleInfoManager;
             public Dictionary<VehicleInfo, HashSet<BaseEntity>> VehiclesWithLocksByType { get; private set; } = new Dictionary<VehicleInfo, HashSet<BaseEntity>>();
 
-            public void OnServerInitialized(VehicleInfoManager vehicleInfoManager)
+            public LockedVehicleTracker(VehicleInfoManager vehicleInfoManager)
             {
                 _vehicleInfoManager = vehicleInfoManager;
+            }
 
+            public void OnServerInitialized()
+            {
                 foreach (var entity in BaseNetworkable.serverEntities)
                 {
                     var baseEntity = entity as BaseEntity;
@@ -1391,16 +1270,20 @@ namespace Oxide.Plugins
             private LockedVehicleTracker _lockedVehicleTracker;
             private AutoUnlockSettings _autoUnlockSettings;
 
-            public void OnServerInitialized(VehicleDeployedLocks pluginInstance, LockedVehicleTracker lockedVehicleTracker, AutoUnlockSettings settings)
+            public AutoUnlockManager(VehicleDeployedLocks pluginInstance, LockedVehicleTracker lockedVehicleTracker)
             {
                 _pluginInstance = pluginInstance;
                 _lockedVehicleTracker = lockedVehicleTracker;
+            }
+
+            public void OnServerInitialized(AutoUnlockSettings settings)
+            {
                 _autoUnlockSettings = settings;
 
                 if (!settings.Enabled)
                     return;
 
-                pluginInstance.timer.Every(settings.CheckIntervalSeconds, CheckVehicles);
+                _pluginInstance.timer.Every(settings.CheckIntervalSeconds, CheckVehicles);
             }
 
             private void CheckVehicles()
@@ -1468,6 +1351,140 @@ namespace Oxide.Plugins
             {
                 baseLock.SetFlag(BaseEntity.Flags.Locked, false);
                 Effect.server.Run(Prefab_CodeLock_UnlockEffect, baseLock, 0, Vector3.zero, Vector3.forward);
+            }
+        }
+
+        #endregion
+
+        #region Reskin Management
+
+        private class ReskinEvent
+        {
+            public BaseEntity Entity;
+            public BaseLock BaseLock;
+            public Vector3 Position;
+
+            public bool IsAvailable() => Entity != null;
+
+            public void Assign(BaseEntity entity, BaseLock baseLock)
+            {
+                Entity = entity;
+                BaseLock = baseLock;
+                Position = entity?.transform.position ?? Vector3.zero;
+            }
+
+            public void Reset()
+            {
+                Assign(null, null);
+            }
+        }
+
+        private class ReskinManager
+        {
+            private VehicleInfoManager _vehicleInfoManager;
+            private LockedVehicleTracker _lockedVehicleTracker;
+
+            // Pool only a single reskin event since usually there will be at most a single event per frame.
+            private ReskinEvent _pooledReskinEvent;
+
+            // Keep track of all reskin events happening in a frame, in case there are multiple.
+            private List<ReskinEvent> _reskinEvents = new List<ReskinEvent>();
+
+            public readonly Action CleanupAction;
+
+            public ReskinManager(VehicleInfoManager vehicleInfoManager, LockedVehicleTracker lockedVehicleTracker)
+            {
+                _vehicleInfoManager = vehicleInfoManager;
+                _lockedVehicleTracker = lockedVehicleTracker;
+                CleanupAction = CleanupEvents;
+            }
+
+            public void HandleReskinPre(BaseEntity entity, BaseLock baseLock)
+            {
+                if (_pooledReskinEvent == null)
+                {
+                    _pooledReskinEvent = new ReskinEvent();
+                }
+
+                var reskinEvent = _pooledReskinEvent.Entity == null
+                    ? _pooledReskinEvent
+                    : new ReskinEvent();
+
+                // Unparent the lock to prevent it from being destroyed.
+                // It will later be parented to the newly spawned entity.
+                baseLock.SetParent(null);
+
+                reskinEvent.Assign(entity, baseLock);
+                _reskinEvents.Add(reskinEvent);
+            }
+
+            public void HandleReskinPost(BaseEntity entity)
+            {
+                var reskinEvent = FindReskinEventForPosition(entity.transform.position);
+                if (reskinEvent == null)
+                    return;
+
+                var baseLock = reskinEvent.BaseLock;
+                if (baseLock == null || baseLock.IsDestroyed)
+                    return;
+
+                var vehicleInfo = _vehicleInfoManager.GetVehicleInfo(entity);
+                if (vehicleInfo == null)
+                    return;
+
+                _reskinEvents.Remove(reskinEvent);
+
+                baseLock.SetParent(entity, vehicleInfo.ParentBone);
+                entity.SetSlot(BaseEntity.Slot.Lock, baseLock);
+                _lockedVehicleTracker.OnLockAdded(entity);
+
+                var lockTransform = baseLock.transform;
+                lockTransform.localPosition = vehicleInfo.LockPosition;
+                lockTransform.localRotation = vehicleInfo.LockRotation;
+                baseLock.SendNetworkUpdateImmediate();
+
+                if (reskinEvent == _pooledReskinEvent)
+                {
+                    reskinEvent.Reset();
+                }
+            }
+
+            private ReskinEvent FindReskinEventForPosition(Vector3 position)
+            {
+                foreach (var reskinEvent in _reskinEvents)
+                {
+                    if (reskinEvent.Position == position)
+                        return reskinEvent;
+                }
+
+                return null;
+            }
+
+            private void CleanupEvents()
+            {
+                if (_reskinEvents.Count == 0)
+                    return;
+
+                foreach (var reskinEvent in _reskinEvents)
+                {
+                    var baseLock = reskinEvent.BaseLock;
+                    if (baseLock == null || baseLock.IsDestroyed || baseLock.HasParent())
+                        continue;
+
+                    var entity = reskinEvent.Entity;
+                    if (entity != null && !entity.IsDestroyed)
+                    {
+                        // The reskin event must have been blocked, so reparent the lock to it.
+                        baseLock.SetParent(reskinEvent.Entity);
+                        continue;
+                    }
+
+                    // The post event wasn't called, and the original entity is gone, so destroy the lock.
+                    baseLock.Kill();
+                }
+
+                _pooledReskinEvent.Reset();
+                _reskinEvents.Clear();
             }
         }
 
