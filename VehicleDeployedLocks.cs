@@ -140,7 +140,7 @@ namespace Oxide.Plugins
 
         private object OnTurretTarget(AutoTurret autoTurret, BasePlayer player)
         {
-            if (autoTurret == null || player == null)
+            if (autoTurret == null || player == null || player.UserIDString == null)
                 return null;
 
             var turretParent = autoTurret.GetParentEntity();
