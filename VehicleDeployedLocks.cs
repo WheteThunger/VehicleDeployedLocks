@@ -1013,6 +1013,13 @@ namespace Oxide.Plugins
                     },
                     new VehicleInfo
                     {
+                        VehicleType = "locomotive",
+                        PrefabPaths = new string[] { "assets/content/vehicles/locomotive/locomotive.entity.prefab" },
+                        LockPosition = new Vector3(-0.11f, 2.89f, 4.95f),
+                        TimeSinceLastUsed = (vehicle) => (vehicle as TrainEngine)?.decayingFor ?? 0,
+                    },
+                    new VehicleInfo
+                    {
                         VehicleType = "magnetcrane",
                         PrefabPaths = new string[] { "assets/content/vehicles/crane_magnet/magnetcrane.entity.prefab" },
                         LockPosition = new Vector3(-1.735f, -1.445f, 0.79f),
@@ -1081,6 +1088,13 @@ namespace Oxide.Plugins
                     },
                     new VehicleInfo
                     {
+                        VehicleType = "sedanrail",
+                        PrefabPaths = new string[] { "assets/content/vehicles/sedan_a/sedanrail.entity.prefab" },
+                        LockPosition = new Vector3(-1.09f, 1.025f, -0.26f),
+                        TimeSinceLastUsed = (vehicle) => (vehicle as TrainEngine)?.decayingFor ?? 0,
+                    },
+                    new VehicleInfo
+                    {
                         VehicleType = "snowmobile",
                         PrefabPaths = new string[] { "assets/content/vehicles/snowmobiles/snowmobile.prefab" },
                         LockPosition = new Vector3(-0.205f, 0.59f, 0.4f),
@@ -1105,6 +1119,20 @@ namespace Oxide.Plugins
                     {
                         VehicleType = "workcart",
                         PrefabPaths = new string[] { "assets/content/vehicles/workcart/workcart.entity.prefab" },
+                        LockPosition = new Vector3(-0.2f, 2.35f, 2.7f),
+                        TimeSinceLastUsed = (vehicle) => (vehicle as TrainEngine)?.decayingFor ?? 0,
+                    },
+                    new VehicleInfo
+                    {
+                        VehicleType = "workcartaboveground",
+                        PrefabPaths = new string[] { "assets/content/vehicles/workcart/workcart_aboveground.entity.prefab" },
+                        LockPosition = new Vector3(-0.2f, 2.35f, 2.7f),
+                        TimeSinceLastUsed = (vehicle) => (vehicle as TrainEngine)?.decayingFor ?? 0,
+                    },
+                    new VehicleInfo
+                    {
+                        VehicleType = "workcartcovered",
+                        PrefabPaths = new string[] { "assets/content/vehicles/workcart/workcart_aboveground2.entity.prefab" },
                         LockPosition = new Vector3(-0.2f, 2.35f, 2.7f),
                         TimeSinceLastUsed = (vehicle) => (vehicle as TrainEngine)?.decayingFor ?? 0,
                     },

@@ -12,7 +12,7 @@
 - Modular cars must have a cockpit module (i.e., driver seat) to receive a lock. The lock will deploy to the front-most cockpit module if there are multiple. If that cockpit is removed, the lock is moved to another cockpit module if present, else destroyed.
 - Modular cars may have a built-in lock at the same time as a deployed lock. This is not recommended, but if this happens, players will need to simultaneously satisfy the rules of the built-in lock and the deployed lock in order to access the car.
 - Locks do not prevent players from entering transport bays like a modular car flatbed or the back of a scrap transport helicopter.
-- The lock position for ridable horses is a bit awkward and sticks out significantly, but this seems to be required in order for the player to be able to interact with it in most positions.
+- The lock position for ridable horses is a bit awkward and sticks out significantly, but this is required in order for the player to be able to interact with it in most positions.
 
 ## Commands
 
@@ -37,6 +37,7 @@ The following permissions allow players to deploy code locks to vehicles.
 - `vehicledeployedlocks.codelock.duosub`
 - `vehicledeployedlocks.codelock.hotairballoon`
 - `vehicledeployedlocks.codelock.kayak`
+- `vehicledeployedlocks.codelock.locomotive`
 - `vehicledeployedlocks.codelock.magnetcrane`
 - `vehicledeployedlocks.codelock.minicopter`
 - `vehicledeployedlocks.codelock.modularcar`
@@ -45,10 +46,13 @@ The following permissions allow players to deploy code locks to vehicles.
 - `vehicledeployedlocks.codelock.ridablehorse`
 - `vehicledeployedlocks.codelock.scraptransport`
 - `vehicledeployedlocks.codelock.sedan`
+- `vehicledeployedlocks.codelock.sedanrail`
 - `vehicledeployedlocks.codelock.snowmobile`
 - `vehicledeployedlocks.codelock.solosub`
 - `vehicledeployedlocks.codelock.tomaha`
 - `vehicledeployedlocks.codelock.workcart`
+- `vehicledeployedlocks.codelock.workcartaboveground`
+- `vehicledeployedlocks.codelock.workcartcovered`
 
 ### Key Locks
 
@@ -60,6 +64,7 @@ The following permissions allow players to deploy key locks to vehicles.
 - `vehicledeployedlocks.keylock.duosub`
 - `vehicledeployedlocks.keylock.hotairballoon`
 - `vehicledeployedlocks.keylock.kayak`
+- `vehicledeployedlocks.keylock.locomotive`
 - `vehicledeployedlocks.keylock.magnetcrane`
 - `vehicledeployedlocks.keylock.minicopter`
 - `vehicledeployedlocks.keylock.modularcar`
@@ -68,10 +73,13 @@ The following permissions allow players to deploy key locks to vehicles.
 - `vehicledeployedlocks.keylock.rowboat`
 - `vehicledeployedlocks.keylock.scraptransport`
 - `vehicledeployedlocks.keylock.sedan`
+- `vehicledeployedlocks.keylock.sedanrail`
 - `vehicledeployedlocks.keylock.snowmobile`
 - `vehicledeployedlocks.keylock.solosub`
 - `vehicledeployedlocks.keylock.tomaha`
 - `vehicledeployedlocks.keylock.workcart`
+- `vehicledeployedlocks.keylock.workcartaboveground`
+- `vehicledeployedlocks.keylock.workcartcovered`
 
 ## Configuration
 
