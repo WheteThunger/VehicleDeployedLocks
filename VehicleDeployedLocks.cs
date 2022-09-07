@@ -11,7 +11,7 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("Vehicle Deployed Locks", "WhiteThunder", "1.7.2")]
+    [Info("Vehicle Deployed Locks", "WhiteThunder", "1.8.0")]
     [Description("Allows players to deploy code locks and key locks to vehicles.")]
     internal class VehicleDeployedLocks : CovalencePlugin
     {
@@ -375,6 +375,22 @@ namespace Oxide.Plugins
 
         private static BaseLock GetVehicleLock(BaseEntity vehicle) =>
             vehicle.GetSlot(BaseEntity.Slot.Lock) as BaseLock;
+
+        private static string[] FindPrefabsOfType<T>() where T : BaseEntity
+        {
+            var prefabList = new List<string>();
+
+            foreach (var assetPath in GameManifest.Current.entities)
+            {
+                var entity = GameManager.server.FindPrefab(assetPath)?.GetComponent<T>();
+                if (entity == null)
+                    continue;
+
+                prefabList.Add(entity.PrefabName);
+            }
+
+            return prefabList.ToArray();
+        }
 
         #endregion
 
@@ -1037,15 +1053,8 @@ namespace Oxide.Plugins
                     new VehicleInfo
                     {
                         VehicleType = "modularcar",
-                        PrefabPaths = new string[]
-                        {
-                            "assets/content/vehicles/modularcar/car_chassis_2module.entity.prefab",
-                            "assets/content/vehicles/modularcar/car_chassis_3module.entity.prefab",
-                            "assets/content/vehicles/modularcar/car_chassis_4module.entity.prefab",
-                            "assets/content/vehicles/modularcar/2module_car_spawned.entity.prefab",
-                            "assets/content/vehicles/modularcar/3module_car_spawned.entity.prefab",
-                            "assets/content/vehicles/modularcar/4module_car_spawned.entity.prefab",
-                        },
+                        // There are at least 37 valid Modular Car prefabs.
+                        PrefabPaths = FindPrefabsOfType<ModularCar>(),
                         LockPosition = new Vector3(-0.9f, 0.35f, -0.5f),
                         DetermineLockParent = (vehicle) => FindFirstDriverModule((ModularCar)vehicle),
                         TimeSinceLastUsed = (vehicle) => Time.time - (vehicle as ModularCar)?.lastEngineOnTime ?? Time.time,
