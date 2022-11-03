@@ -11,7 +11,7 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("Vehicle Deployed Locks", "WhiteThunder", "1.8.0")]
+    [Info("Vehicle Deployed Locks", "WhiteThunder", "1.8.1")]
     [Description("Allows players to deploy code locks and key locks to vehicles.")]
     internal class VehicleDeployedLocks : CovalencePlugin
     {
@@ -1030,7 +1030,7 @@ namespace Oxide.Plugins
                     new VehicleInfo
                     {
                         VehicleType = "locomotive",
-                        PrefabPaths = new string[] { "assets/content/vehicles/locomotive/locomotive.entity.prefab" },
+                        PrefabPaths = new string[] { "assets/content/vehicles/trains/locomotive/locomotive.entity.prefab" },
                         LockPosition = new Vector3(-0.11f, 2.89f, 4.95f),
                         TimeSinceLastUsed = (vehicle) => (vehicle as TrainEngine)?.decayingFor ?? 0,
                     },
@@ -1127,21 +1127,21 @@ namespace Oxide.Plugins
                     new VehicleInfo
                     {
                         VehicleType = "workcart",
-                        PrefabPaths = new string[] { "assets/content/vehicles/workcart/workcart.entity.prefab" },
+                        PrefabPaths = new string[] { "assets/content/vehicles/trains/workcart/workcart.entity.prefab" },
                         LockPosition = new Vector3(-0.2f, 2.35f, 2.7f),
                         TimeSinceLastUsed = (vehicle) => (vehicle as TrainEngine)?.decayingFor ?? 0,
                     },
                     new VehicleInfo
                     {
                         VehicleType = "workcartaboveground",
-                        PrefabPaths = new string[] { "assets/content/vehicles/workcart/workcart_aboveground.entity.prefab" },
+                        PrefabPaths = new string[] { "assets/content/vehicles/trains/workcart/workcart_aboveground.entity.prefab" },
                         LockPosition = new Vector3(-0.2f, 2.35f, 2.7f),
                         TimeSinceLastUsed = (vehicle) => (vehicle as TrainEngine)?.decayingFor ?? 0,
                     },
                     new VehicleInfo
                     {
                         VehicleType = "workcartcovered",
-                        PrefabPaths = new string[] { "assets/content/vehicles/workcart/workcart_aboveground2.entity.prefab" },
+                        PrefabPaths = new string[] { "assets/content/vehicles/trains/workcart/workcart_aboveground2.entity.prefab" },
                         LockPosition = new Vector3(-0.2f, 2.35f, 2.7f),
                         TimeSinceLastUsed = (vehicle) => (vehicle as TrainEngine)?.decayingFor ?? 0,
                     },
