@@ -11,7 +11,7 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("Vehicle Deployed Locks", "WhiteThunder", "1.8.1")]
+    [Info("Vehicle Deployed Locks", "WhiteThunder", "1.8.2")]
     [Description("Allows players to deploy code locks and key locks to vehicles.")]
     internal class VehicleDeployedLocks : CovalencePlugin
     {
@@ -975,7 +975,7 @@ namespace Oxide.Plugins
 
                 var mountable = entity as BaseMountable;
                 if (mountable != null)
-                    return mountable.IsMounted();
+                    return mountable.AnyMounted();
 
                 return false;
             }
