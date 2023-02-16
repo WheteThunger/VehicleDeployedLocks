@@ -1630,67 +1630,109 @@ namespace Oxide.Plugins
         private class AutoUnlockSettings
         {
             [JsonProperty("Enabled")]
-            public bool Enabled = false;
+            public bool Enabled;
 
-            [JsonProperty("IdleSeconds")]
+            [JsonProperty("Unlock after idle time (seconds)")]
             public float IdleSeconds = 3600;
 
-            [JsonProperty("CheckIntervalSeconds")]
+            [JsonProperty("IdleSeconds")]
+            private float DeprecatedIdleSeconds { set { IdleSeconds = value; } }
+
+            [JsonProperty("Check interval seconds")]
             public float CheckIntervalSeconds = 300;
 
-            [JsonProperty("ExemptOwnedVehicles")]
+            [JsonProperty("CheckIntervalSeconds")]
+            private float DeprecatedCheckIntervalSeconds { set { CheckIntervalSeconds = value; } }
+
+            [JsonProperty("Exempt owned vehicles")]
             public bool ExemptOwnedVehicles = true;
 
-            [JsonProperty("ExemptNearTC")]
+            [JsonProperty("ExemptOwnedVehicles")]
+            private bool DeprecatedExemptOwnedVehicles { set { ExemptOwnedVehicles = value; } }
+
+            [JsonProperty("Exempt vehicles near cupboards")]
             public bool ExemptNearTC = true;
+
+            [JsonProperty("ExemptNearTC")]
+            private bool DeprecatedExemptNearTC { set { ExemptNearTC = value; } }
         }
 
         private class ModularCarSettings
         {
-            [JsonProperty("AllowEditingWhileLockedOut")]
+            [JsonProperty("Allow editing while locked out")]
             public bool AllowEditingWhileLockedOut = true;
+
+            [JsonProperty("AllowEditingWhileLockedOut")]
+            private bool DeprecatedAllowEditingWhileLockedOut { set { AllowEditingWhileLockedOut = value; } }
         }
 
         private class SharingSettings
         {
             [JsonProperty("Clan")]
-            public bool Clan = false;
+            public bool Clan;
+
+            [JsonProperty("Clan or ally")]
+            public bool ClanOrAlly;
 
             [JsonProperty("ClanOrAlly")]
-            public bool ClanOrAlly = false;
+            private bool DeprecatedClanOrAlly { set { ClanOrAlly = value; } }
 
             [JsonProperty("Friends")]
-            public bool Friends = false;
+            public bool Friends;
 
             [JsonProperty("Team")]
-            public bool Team = false;
+            public bool Team;
         }
 
         private class Configuration : BaseConfiguration
         {
-            [JsonProperty("AllowIfDifferentOwner")]
-            public bool AllowIfDifferentOwner = false;
+            [JsonProperty("Allow deploying locks onto vehicles owned by other players")]
+            public bool AllowIfDifferentOwner;
 
-            [JsonProperty("AllowIfNoOwner")]
+            [JsonProperty("AllowIfDifferentOwner")]
+            private bool DeprecatedAllowIfDifferentOwner { set { AllowIfDifferentOwner = value; } }
+
+            [JsonProperty("Allow deploying locks onto unowned vehicles")]
             public bool AllowIfNoOwner = true;
 
-            [JsonProperty("RequireTCIfNoOwner")]
-            public bool RequireTCIfNoOwner = false;
+            [JsonProperty("AllowIfNoOwner")]
+            private bool DeprecatedAllowIfNoOwner { set { AllowIfNoOwner = value; } }
 
-            [JsonProperty("AllowPushWhileLockedOut")]
+            [JsonProperty("Require cupboard auth to deploy locks onto unowned vehicles")]
+            public bool RequireTCIfNoOwner;
+
+            [JsonProperty("RequireTCIfNoOwner")]
+            private bool DeprecatedRequireTCIfNoOwner { set { RequireTCIfNoOwner = value; } }
+
+            [JsonProperty("Allow pushing vehicles while locked out")]
             public bool AllowPushWhileLockedOut = true;
 
-            [JsonProperty("CraftCooldownSeconds")]
+            [JsonProperty("AllowPushWhileLockedOut")]
+            private bool DeprecatedAllowPushWhileLockedOut { set { AllowPushWhileLockedOut = value; } }
+
+            [JsonProperty("Cooldown to auto craft locks (seconds)")]
             public float CraftCooldownSeconds = 10;
 
-            [JsonProperty("ModularCarSettings")]
+            [JsonProperty("CraftCooldownSeconds")]
+            private float DeprecatedCraftCooldownSeconds { set { CraftCooldownSeconds = value; } }
+
+            [JsonProperty("Modular car settings")]
             public ModularCarSettings ModularCarSettings = new ModularCarSettings();
 
-            [JsonProperty("DefaultSharingSettings")]
+            [JsonProperty("ModularCarSettings")]
+            private ModularCarSettings DeprecatedModularCarSettings { set { ModularCarSettings = value; } }
+
+            [JsonProperty("Lock sharing settings")]
             public SharingSettings SharingSettings = new SharingSettings();
 
-            [JsonProperty("AutoUnlockIdleVehicles")]
+            [JsonProperty("DefaultSharingSettings")]
+            private SharingSettings DeprecatedSharingSettings { set { SharingSettings = value; } }
+
+            [JsonProperty("Auto unlock idle vehicles")]
             public AutoUnlockSettings AutoUnlockSettings = new AutoUnlockSettings();
+
+            [JsonProperty("AutoUnlockIdleVehicles")]
+            private AutoUnlockSettings DeprecatedAutoUnlockSettings { set { AutoUnlockSettings = value; } }
         }
 
         private Configuration GetDefaultConfig() => new Configuration();

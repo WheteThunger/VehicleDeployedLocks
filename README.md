@@ -2,7 +2,7 @@
 
 - Allows players to deploy code locks and key locks to various vehicles, the same way locks are deployed to doors and containers (no commands required).
 - Prevents players without lock authorization from accessing seats, fuel, storage, turrets and other vehicle features. Compatible with most plugins that add containers and other attachments to vehicles.
-- Lock authorization may be shared with the lock owner's team, friends or clanmates based on the plugin configuration, or via compatible sharing plugins. This allows other players to access the vehicle without requiring a key or code, and prevents them from being targetted by turrets on the vehicle.
+- Lock authorization may be shared with the lock owner's team, friends or clanmates based on the plugin configuration, or via compatible sharing plugins. This allows other players to access the vehicle without requiring a key or code, and prevents them from being targeted by turrets on the vehicle.
 - Deploying a lock consumes one from the player inventory, or consumes equivalent resources based on the blueprint price.
 - Free locks for players with permission.
 - Compatible with taxi modules.
@@ -12,7 +12,7 @@
 - Modular cars must have a cockpit module (i.e., driver seat) to receive a lock. The lock will deploy to the front-most cockpit module if there are multiple. If that cockpit is removed, the lock is moved to another cockpit module if present, else destroyed.
 - Modular cars may have a built-in lock at the same time as a deployed lock. This is not recommended, but if this happens, players will need to simultaneously satisfy the rules of the built-in lock and the deployed lock in order to access the car.
 - Locks do not prevent players from entering transport bays like a modular car flatbed or the back of a scrap transport helicopter.
-- The lock position for ridable horses is a bit awkward and sticks out significantly, but this is required in order for the player to be able to interact with it in most positions.
+- The lock position for rideable horses is a bit awkward and sticks out significantly, but this is required in order for the player to be able to interact with it in most positions.
 
 ## Commands
 
@@ -32,6 +32,7 @@ Note: In addition to being able to deploy locks directly, you can also use the f
 - `vehicledeployedlocks.codelock.free` -- Allows the player to deploy code locks to vehicles without consuming locks or resources from their inventory.
 
 The following permissions allow players to deploy code locks to vehicles.
+
 - `vehicledeployedlocks.codelock.allvehicles` (all in one)
 - `vehicledeployedlocks.codelock.chinook`
 - `vehicledeployedlocks.codelock.duosub`
@@ -59,6 +60,7 @@ The following permissions allow players to deploy code locks to vehicles.
 - `vehicledeployedlocks.keylock.free` -- Allows the player to deploy key locks to vehicles without consuming locks or resources from their inventory.
 
 The following permissions allow players to deploy key locks to vehicles.
+
 - `vehicledeployedlocks.keylock.allvehicles` (all in one)
 - `vehicledeployedlocks.keylock.chinook`
 - `vehicledeployedlocks.keylock.duosub`
@@ -85,44 +87,44 @@ The following permissions allow players to deploy key locks to vehicles.
 
 ```json
 {
-  "AllowIfDifferentOwner": false,
-  "AllowIfNoOwner": true,
-  "RequireTCIfNoOwner": false,
-  "AllowPushWhileLockedOut": true,
-  "CraftCooldownSeconds": 10.0,
-  "ModularCarSettings": {
-    "AllowEditingWhileLockedOut": true
+  "Allow deploying locks onto vehicles owned by other players": false,
+  "Allow deploying locks onto unowned vehicles": true,
+  "Require cupboard auth to deploy locks onto unowned vehicles": false,
+  "Allow pushing vehicles while locked out": true,
+  "Cooldown to auto craft locks (seconds)": 10.0,
+  "Modular car settings": {
+    "Allow editing while locked out": true
   },
-  "DefaultSharingSettings": {
+  "Lock sharing settings": {
     "Clan": false,
-    "ClanOrAlly": false,
+    "Clan or ally": false,
     "Friends": false,
     "Team": false
   },
-  "AutoUnlockIdleVehicles": {
+  "Auto unlock idle vehicles": {
     "Enabled": false,
-    "IdleSeconds": 3600,
-    "CheckIntervalSeconds": 300,
-    "ExemptOwnedVehicles": true,
-    "ExemptNearTC": true
+    "Unlock after idle time (seconds)": 3600.0,
+    "Check interval seconds": 300.0,
+    "Exempt owned vehicles": true,
+    "Exempt vehicles near cupboards": true
   }
 }
 ```
 
-- `AllowIfDifferentOwner` (`true` or `false`) -- Whether to allow players to deploy a lock onto a vehicle owned by someone else (i.e., a vehicle whose `OwnerID` is a different player's Steam ID). Such vehicles are likely spawned by a plugin, or a plugin allowed the player to claim that vehicle. This is `false` by default to protect owned vehicles from having locks deployed onto them by others. Note: If the owner leaves a code lock unlocked, another player can still lock it with a custom code to lock out the owner.
-- `AllowIfNoOwner` (`true` or `false`) -- Whether to allow players to deploy a lock onto a vehicle that has no owner (i.e., `OwnerID` is `0`), which usually describes vehicles that spawned naturally in the world, though some plugins may spawn vehicles with no owner as well. Note: Vehicles spawned at NPC vendors have no owner by default, unless set by a plugin such as [Vehicle Vendor Options](https://umod.org/plugins/vehicle-vendor-options). You can also use the [Claim Vehicle Ownership](https://umod.org/plugins/claim-vehicle-ownership) plugin to allow players to claim unowned vehicles with an optional cooldown.
-- `RequireTCIfNoOwner` (`true` or `false`) -- Whether to require players to be within TC radius to deploy a lock onto an **unowned** vehicle.
-- `AllowPushWhileLockedOut` (`true` or `false`) -- Whether to allow players to push a vehicle while they are not authorized to the vehicle's lock. This is `true` by default to be consistent with vanilla behavior.
-- `CraftCooldownSeconds` -- Cooldown for players to craft a lock if they don't have one in their inventory. Since players can pickup vehicle-deployed locks (by design), this cooldown prevents players from effectively making locks faster than they could normally craft them. Configure this based on the crafting speed of locks on your server.
-- `ModularCarSettings`
+- `Allow deploying locks onto vehicles owned by other players` (`true` or `false`) -- Whether to allow players to deploy a lock onto a vehicle owned by someone else (i.e., a vehicle whose `OwnerID` is a different player's Steam ID). Such vehicles are likely spawned by a plugin, or a plugin allowed the player to claim that vehicle. This is `false` by default to protect owned vehicles from having locks deployed onto them by others. Note: If the owner leaves a code lock unlocked, another player can still lock it with a custom code to lock out the owner.
+- `Allow deploying locks onto unowned vehicles` (`true` or `false`) -- Whether to allow players to deploy a lock onto a vehicle that has no owner (i.e., `OwnerID` is `0`), which usually describes vehicles that spawned naturally in the world, though some plugins may spawn vehicles with no owner as well. Note: Vehicles spawned at NPC vendors have no owner by default, unless set by a plugin such as [Vehicle Vendor Options](https://umod.org/plugins/vehicle-vendor-options). You can also use the [Claim Vehicle Ownership](https://umod.org/plugins/claim-vehicle-ownership) plugin to allow players to claim unowned vehicles with an optional cooldown.
+- `Require cupboard auth to deploy locks onto unowned vehicles` (`true` or `false`) -- Whether to require players to be within TC radius to deploy a lock onto an **unowned** vehicle.
+- `Allow pushing vehicles while locked out` (`true` or `false`) -- Whether to allow players to push a vehicle while they are not authorized to the vehicle's lock. This is `true` by default to be consistent with vanilla behavior.
+- `Cooldown to auto craft locks (seconds)` -- Cooldown for players to craft a lock if they don't have one in their inventory. Since players can pickup vehicle-deployed locks (by design), this cooldown prevents players from effectively making locks faster than they could normally craft them. Configure this based on the crafting speed of locks on your server.
+- `Modular car settings`
   - `AllowEditingWhileLockedOut` -- Whether to allow players to edit a car at a lift while they are not authorized to the car's lock. This is `true` by default to be consistent with the vanilla car locks which allow players to edit the car (which likely allows removal of the lock). Setting this to `false` will make it impossible for unauthorized players to edit the car.
-- `DefaultSharingSettings` (each `true` or `false`) -- Whether to allow players to bypass locks placed by their clanmates, ally clanmates, friends or teammates. More advanced sharing (such as players being in control of these settings) can be achieved via compatible sharing plugins.
-- `AutoUnlockIdleVehicles` -- Settings to automatically detect idle vehicles and unlock them.
+- `Lock sharing settings` (each `true` or `false`) -- Whether to allow players to bypass locks placed by their clanmates, ally clanmates, friends or teammates.
+- `Auto unlock idle vehicles` -- Settings to automatically detect idle vehicles and unlock them.
   - `Enabled` (`true` or `false`) -- While `true`, vehicles will periodically be checked for idleness and potentially unlocked.
-  - `IdleSeconds` -- Determines how long after a vehicle has been used that it will be considered idle. Supports all vehicles **except** Sedan which does not track activity information in vanilla.
-  - `CheckIntervalSeconds` -- How often to check vehicles for idleness.
-  - `ExemptOwnedVehicles` -- While `true`, owned vehicles are exempt from idleness checks.
-  - `ExemptNearTC` -- While `true`, vehicles near TCs are exempt from idleness checks.
+  - `Unlock after idle time (seconds)` -- Determines how long after a vehicle has been used that it will be considered idle. Supports all vehicles **except** Sedan which does not track activity information in vanilla.
+  - `Check interval seconds` -- How often to check vehicles for idleness.
+  - `Exempt owned vehicles` -- While `true`, owned vehicles are exempt from idleness checks.
+  - `Exempt vehicles near cupboards` -- While `true`, vehicles near TCs are exempt from idleness checks.
 
 ## Localization
 
