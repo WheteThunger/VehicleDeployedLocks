@@ -40,7 +40,7 @@ namespace Oxide.Plugins
         private readonly AutoUnlockManager _autoUnlockManager;
         private readonly ReskinManager _reskinManager;
 
-        private object _boxedFalse = false;
+        private readonly object False = false;
 
         private enum PayType { Item, Resources, Free }
 
@@ -68,7 +68,9 @@ namespace Oxide.Plugins
             _craftCodeLockCooldowns = new CooldownManager(_pluginConfig.CraftCooldownSeconds);
 
             if (_pluginConfig.AllowPushWhileLockedOut)
+            {
                 Unsubscribe(nameof(OnVehiclePush));
+            }
 
             Unsubscribe(nameof(OnEntityKill));
         }
@@ -135,8 +137,10 @@ namespace Oxide.Plugins
             return null;
         }
 
-        private object OnTurretAuthorize(AutoTurret entity, BasePlayer player) =>
-            CanPlayerInteractWithParentVehicle(player, entity);
+        private object OnTurretAuthorize(AutoTurret entity, BasePlayer player)
+        {
+            return CanPlayerInteractWithParentVehicle(player, entity);
+        }
 
         private object OnTurretTarget(AutoTurret autoTurret, BasePlayer player)
         {
@@ -153,7 +157,7 @@ namespace Oxide.Plugins
                 return null;
 
             if (CanPlayerBypassLock(player, baseLock, provideFeedback: false))
-                return _boxedFalse;
+                return False;
 
             return null;
         }
@@ -167,8 +171,10 @@ namespace Oxide.Plugins
             return CanPlayerInteractWithParentVehicle(player, carSeat, provideFeedback: false);
         }
 
-        private object OnVehiclePush(BaseVehicle vehicle, BasePlayer player) =>
-            CanPlayerInteractWithVehicle(player, vehicle);
+        private object OnVehiclePush(BaseVehicle vehicle, BasePlayer player)
+        {
+            return CanPlayerInteractWithVehicle(player, vehicle);
+        }
 
         private void OnEntityKill(BaseLock baseLock)
         {
@@ -196,24 +202,27 @@ namespace Oxide.Plugins
 
             baseLock.SetParent(null);
 
+            var car2 = car;
+            var baseLock2 = baseLock;
+
             NextTick(() =>
             {
-                if (car == null)
+                if (car2 == null)
                 {
-                    _lockedVehicleTracker.OnLockRemoved(car);
-                    baseLock.Kill();
+                    _lockedVehicleTracker.OnLockRemoved(car2);
+                    baseLock2.Kill();
                 }
                 else
                 {
-                    var driverModule = FindFirstDriverModule(car);
+                    var driverModule = FindFirstDriverModule(car2);
                     if (driverModule == null)
                     {
-                        _lockedVehicleTracker.OnLockRemoved(car);
-                        baseLock.Kill();
+                        _lockedVehicleTracker.OnLockRemoved(car2);
+                        baseLock2.Kill();
                     }
                     else
                     {
-                        baseLock.SetParent(driverModule);
+                        baseLock2.SetParent(driverModule);
                     }
                 }
             });
@@ -237,11 +246,17 @@ namespace Oxide.Plugins
 
             LockInfo lockInfo;
             if (itemid == LockInfo_CodeLock.ItemId)
+            {
                 lockInfo = LockInfo_CodeLock;
+            }
             else if (itemid == LockInfo_KeyLock.ItemId)
+            {
                 lockInfo = LockInfo_KeyLock;
+            }
             else
+            {
                 return null;
+            }
 
             var vehicle = GetVehicleFromEntity(BaseNetworkable.serverEntities.Find(entityId) as BaseEntity, basePlayer);
             if (vehicle == null)
@@ -259,10 +274,10 @@ namespace Oxide.Plugins
             PayType payType;
             if (!VerifyCanDeploy(player, vehicle, vehicleInfo, lockInfo, out payType)
                 || !VerifyDeployDistance(player, vehicle))
-                return _boxedFalse;
+                return False;
 
             DeployLockForPlayer(vehicle, vehicleInfo, lockInfo, basePlayer, payType);
-            return _boxedFalse;
+            return False;
         }
 
         private object OnEntityReskin(Snowmobile snowmobile, ItemSkinDirectory.Skin skin, BasePlayer player)
@@ -275,7 +290,7 @@ namespace Oxide.Plugins
                 return null;
 
             if (baseLock.IsLocked() && !CanPlayerBypassLock(player, baseLock, provideFeedback: true))
-                return _boxedFalse;
+                return False;
 
             _reskinManager.HandleReskinPre(snowmobile, baseLock);
 
@@ -294,22 +309,38 @@ namespace Oxide.Plugins
 
         #region API
 
-        private CodeLock API_DeployCodeLock(BaseEntity vehicle, BasePlayer player, bool isFree = true) =>
-            DeployLockForAPI(vehicle, player, LockInfo_CodeLock, isFree) as CodeLock;
+        [HookMethod(nameof(API_DeployCodeLock))]
+        public CodeLock API_DeployCodeLock(BaseEntity vehicle, BasePlayer player, bool isFree = true)
+        {
+            return DeployLockForAPI(vehicle, player, LockInfo_CodeLock, isFree) as CodeLock;
+        }
 
-        private KeyLock API_DeployKeyLock(BaseEntity vehicle, BasePlayer player, bool isFree = true) =>
-            DeployLockForAPI(vehicle, player, LockInfo_KeyLock, isFree) as KeyLock;
+        [HookMethod(nameof(API_DeployKeyLock))]
+        public KeyLock API_DeployKeyLock(BaseEntity vehicle, BasePlayer player, bool isFree = true)
+        {
+            return DeployLockForAPI(vehicle, player, LockInfo_KeyLock, isFree) as KeyLock;
+        }
 
-        private bool API_CanPlayerDeployCodeLock(BasePlayer player, BaseEntity vehicle) =>
-            CanPlayerDeployLockForAPI(player, vehicle, LockInfo_CodeLock);
+        [HookMethod(nameof(API_CanPlayerDeployCodeLock))]
+        public bool API_CanPlayerDeployCodeLock(BasePlayer player, BaseEntity vehicle)
+        {
+            return CanPlayerDeployLockForAPI(player, vehicle, LockInfo_CodeLock);
+        }
 
-        private bool API_CanPlayerDeployKeyLock(BasePlayer player, BaseEntity vehicle) =>
-            CanPlayerDeployLockForAPI(player, vehicle, LockInfo_KeyLock);
+        [HookMethod(nameof(API_CanPlayerDeployKeyLock))]
+        public bool API_CanPlayerDeployKeyLock(BasePlayer player, BaseEntity vehicle)
+        {
+            return CanPlayerDeployLockForAPI(player, vehicle, LockInfo_KeyLock);
+        }
 
-        private bool API_CanAccessVehicle(BasePlayer player, BaseEntity vehicle, bool provideFeedback = true) =>
-            CanPlayerInteractWithVehicle(player, vehicle, provideFeedback) == null;
+        [HookMethod(nameof(API_CanAccessVehicle))]
+        public bool API_CanAccessVehicle(BasePlayer player, BaseEntity vehicle, bool provideFeedback = true)
+        {
+            return CanPlayerInteractWithVehicle(player, vehicle, provideFeedback) == null;
+        }
 
-        private void API_RegisterCustomVehicleType(string vehicleType, Vector3 lockPosition, Quaternion lockRotation, string parentBone, Func<BaseEntity, BaseEntity> determineLockParent)
+        [HookMethod(nameof(API_RegisterCustomVehicleType))]
+        public void API_RegisterCustomVehicleType(string vehicleType, Vector3 lockPosition, Quaternion lockRotation, string parentBone, Func<BaseEntity, BaseEntity> determineLockParent)
         {
             _vehicleInfoManager.RegisterCustomVehicleType(this, new VehicleInfo()
             {
@@ -326,12 +357,16 @@ namespace Oxide.Plugins
         #region Commands
 
         [Command("vehiclecodelock", "vcodelock", "vlock")]
-        private void CodeLockCommand(IPlayer player, string cmd, string[] args) =>
+        private void CodeLockCommand(IPlayer player, string cmd, string[] args)
+        {
             LockCommand(player, LockInfo_CodeLock);
+        }
 
         [Command("vehiclekeylock", "vkeylock")]
-        private void KeyLockCommand(IPlayer player, string cmd, string[] args) =>
+        private void KeyLockCommand(IPlayer player, string cmd, string[] args)
+        {
             LockCommand(player, LockInfo_KeyLock);
+        }
 
         private void LockCommand(IPlayer player, LockInfo lockInfo)
         {
@@ -367,14 +402,18 @@ namespace Oxide.Plugins
         private static bool HasPermissionAny(IPlayer player, params string[] permissionNames)
         {
             foreach (var perm in permissionNames)
+            {
                 if (player.HasPermission(perm))
                     return true;
+            }
 
             return false;
         }
 
-        private static BaseLock GetVehicleLock(BaseEntity vehicle) =>
-            vehicle.GetSlot(BaseEntity.Slot.Lock) as BaseLock;
+        private static BaseLock GetVehicleLock(BaseEntity vehicle)
+        {
+            return vehicle.GetSlot(BaseEntity.Slot.Lock) as BaseLock;
+        }
 
         private static string[] FindPrefabsOfType<T>() where T : BaseEntity
         {
@@ -396,14 +435,19 @@ namespace Oxide.Plugins
 
         #region Helper Methods - Lock Authorization
 
-        private bool IsPlayerAuthorizedToCodeLock(ulong userID, CodeLock codeLock) =>
-            codeLock.whitelistPlayers.Contains(userID)
-            || codeLock.guestPlayers.Contains(userID);
+        private bool IsPlayerAuthorizedToCodeLock(ulong userID, CodeLock codeLock)
+        {
+            return codeLock.whitelistPlayers.Contains(userID)
+                || codeLock.guestPlayers.Contains(userID);
+        }
 
-        private bool IsPlayerAuthorizedToLock(BasePlayer player, BaseLock baseLock) =>
-            (baseLock as KeyLock)?.HasLockPermission(player) ?? IsPlayerAuthorizedToCodeLock(player.userID, baseLock as CodeLock);
+        private bool IsPlayerAuthorizedToLock(BasePlayer player, BaseLock baseLock)
+        {
+            return (baseLock as KeyLock)?.HasLockPermission(player)
+                ?? IsPlayerAuthorizedToCodeLock(player.userID, baseLock as CodeLock);
+        }
 
-        private bool PlayerHasMasterKeyForLock(BasePlayer player, BaseLock baseLock)
+        private bool PlayerHasMasterKeyForLock(BasePlayer player)
         {
             return permission.UserHasPermission(player.UserIDString, Permission_MasterKey);
         }
@@ -447,13 +491,13 @@ namespace Oxide.Plugins
 
         private bool CanPlayerBypassLock(BasePlayer player, BaseLock baseLock, bool provideFeedback)
         {
-            object hookResult = Interface.CallHook("CanUseLockedEntity", player, baseLock);
+            var hookResult = Interface.CallHook("CanUseLockedEntity", player, baseLock);
             if (hookResult is bool)
                 return (bool)hookResult;
 
             var canAccessLock = IsPlayerAuthorizedToLock(player, baseLock)
                 || IsLockSharedWithPlayer(player, baseLock)
-                || PlayerHasMasterKeyForLock(player, baseLock);
+                || PlayerHasMasterKeyForLock(player);
 
             if (canAccessLock)
             {
@@ -486,7 +530,7 @@ namespace Oxide.Plugins
             if (CanPlayerBypassLock(player, baseLock, provideFeedback))
                 return null;
 
-            return _boxedFalse;
+            return False;
         }
 
         private BaseEntity GetParentVehicle(BaseEntity entity)
@@ -506,8 +550,10 @@ namespace Oxide.Plugins
             return _vehicleInfoManager.GetCustomVehicleParent(entity);
         }
 
-        private object CanPlayerInteractWithParentVehicle(BasePlayer player, BaseEntity entity, bool provideFeedback = true) =>
-            CanPlayerInteractWithVehicle(player, GetParentVehicle(entity), provideFeedback);
+        private object CanPlayerInteractWithParentVehicle(BasePlayer player, BaseEntity entity, bool provideFeedback = true)
+        {
+            return CanPlayerInteractWithVehicle(player, GetParentVehicle(entity), provideFeedback);
+        }
 
         #endregion
 
@@ -515,7 +561,7 @@ namespace Oxide.Plugins
 
         private static bool DeployWasBlocked(BaseEntity vehicle, BasePlayer player, LockInfo lockInfo)
         {
-            object hookResult = Interface.CallHook(lockInfo.PreHookName, vehicle, player);
+            var hookResult = Interface.CallHook(lockInfo.PreHookName, vehicle, player);
             return hookResult is bool && (bool)hookResult == false;
         }
 
@@ -528,8 +574,10 @@ namespace Oxide.Plugins
             return hit.GetEntity();
         }
 
-        private static bool IsDead(BaseEntity entity) =>
-            (entity as BaseCombatEntity)?.IsDead() ?? false;
+        private static bool IsDead(BaseEntity entity)
+        {
+            return (entity as BaseCombatEntity)?.IsDead() ?? false;
+        }
 
         private static VehicleModuleSeating FindFirstDriverModule(ModularCar car)
         {
@@ -546,8 +594,10 @@ namespace Oxide.Plugins
             return null;
         }
 
-        private static bool CanCarHaveLock(ModularCar car) =>
-            FindFirstDriverModule(car) != null;
+        private static bool CanCarHaveLock(ModularCar car)
+        {
+            return FindFirstDriverModule(car) != null;
+        }
 
         private static bool CanVehicleHaveALock(BaseEntity vehicle)
         {
@@ -556,8 +606,10 @@ namespace Oxide.Plugins
             return car == null || CanCarHaveLock(car);
         }
 
-        private static Item GetPlayerLockItem(BasePlayer player, LockInfo lockInfo) =>
-            player.inventory.FindItemID(lockInfo.ItemId);
+        private static Item GetPlayerLockItem(BasePlayer player, LockInfo lockInfo)
+        {
+            return player.inventory.FindItemID(lockInfo.ItemId);
+        }
 
         private static PayType DeterminePayType(IPlayer player, LockInfo lockInfo)
         {
@@ -575,7 +627,7 @@ namespace Oxide.Plugins
             if (payType != PayType.Resources)
                 return true;
 
-            return player.inventory.crafting.CanCraft(lockInfo.ItemDefinition, 1);
+            return player.inventory.crafting.CanCraft(lockInfo.ItemDefinition);
         }
 
         private static RidableHorse GetClosestHorse(HitchTrough hitchTrough, BasePlayer player)
@@ -610,24 +662,28 @@ namespace Oxide.Plugins
                 return module.Vehicle;
 
             var carLift = entity as ModularCarGarage;
-            if (!ReferenceEquals(carLift, null))
+            if ((object)carLift != null)
                 return carLift.carOccupant;
 
             var hitchTrough = entity as HitchTrough;
-            if (!ReferenceEquals(hitchTrough, null))
+            if ((object)hitchTrough != null)
                 return GetClosestHorse(hitchTrough, basePlayer);
 
             return entity;
         }
 
-        private bool AllowNoOwner(BaseEntity vehicle) =>
-            _pluginConfig.AllowIfNoOwner
-            || vehicle.OwnerID != 0;
+        private bool AllowNoOwner(BaseEntity vehicle)
+        {
+            return _pluginConfig.AllowIfNoOwner
+                || vehicle.OwnerID != 0;
+        }
 
-        private bool AllowDifferentOwner(IPlayer player, BaseEntity vehicle) =>
-            _pluginConfig.AllowIfDifferentOwner
-            || vehicle.OwnerID == 0
-            || vehicle.OwnerID.ToString() == player.Id;
+        private bool AllowDifferentOwner(IPlayer player, BaseEntity vehicle)
+        {
+            return _pluginConfig.AllowIfDifferentOwner
+                || vehicle.OwnerID == 0
+                || vehicle.OwnerID.ToString() == player.Id;
+        }
 
         private void MaybeChargePlayerForLock(BasePlayer player, LockInfo lockInfo, PayType payType)
         {
@@ -639,9 +695,13 @@ namespace Oxide.Plugins
                 // Prefer taking the item they are holding in case they are deploying directly.
                 var heldItem = player.GetActiveItem();
                 if (heldItem != null && heldItem.info.itemid == lockInfo.ItemId)
+                {
                     heldItem.UseItem(1);
+                }
                 else
+                {
                     player.inventory.Take(null, lockInfo.ItemId, 1);
+                }
 
                 player.Command("note.inv", lockInfo.ItemId, -1);
                 return;
@@ -741,9 +801,13 @@ namespace Oxide.Plugins
 
             PayType payType;
             if (isFree)
+            {
                 payType = PayType.Free;
+            }
             else if (!VerifyPlayerCanDeployLock(player.IPlayer, lockInfo, out payType))
+            {
                 return null;
+            }
 
             if (DeployWasBlocked(vehicle, player, lockInfo))
                 return null;
@@ -805,8 +869,8 @@ namespace Oxide.Plugins
 
         private bool VerifyNotForSale(IPlayer player, BaseEntity vehicle)
         {
-            var ridableAnimal = vehicle as BaseRidableAnimal;
-            if (ridableAnimal == null || !ridableAnimal.IsForSale())
+            var rideableAnimal = vehicle as BaseRidableAnimal;
+            if (rideableAnimal == null || !rideableAnimal.IsForSale())
                 return true;
 
             ReplyToPlayer(player, Lang.DeployErrorOther);
@@ -891,8 +955,11 @@ namespace Oxide.Plugins
             return false;
         }
 
-        private bool VerifyPlayerCanDeployLock(IPlayer player, LockInfo lockInfo, out PayType payType) =>
-            VerifyPlayerCanAffordLock(player.Object as BasePlayer, lockInfo, out payType) && VerifyOffCooldown(player, lockInfo, payType);
+        private bool VerifyPlayerCanDeployLock(IPlayer player, LockInfo lockInfo, out PayType payType)
+        {
+            return VerifyPlayerCanAffordLock(player.Object as BasePlayer, lockInfo, out payType)
+                && VerifyOffCooldown(player, lockInfo, payType);
+        }
 
         private bool VerifyNotMounted(IPlayer player, BaseEntity vehicle, VehicleInfo vehicleInfo)
         {
@@ -958,10 +1025,16 @@ namespace Oxide.Plugins
                     {
                         var prefabId = StringPool.Get(prefabName);
                         if (prefabId != 0)
+                        {
                             prefabIds.Add(prefabId);
+                        }
                         else
-                            pluginInstance.LogError($"Invalid prefab. Please alert the plugin maintainer -- {prefabName}");
+                        {
+                            pluginInstance.LogError(
+                                $"Invalid prefab. Please alert the plugin maintainer -- {prefabName}");
+                        }
                     }
+
                     PrefabIds = prefabIds.ToArray();
                 }
             }
@@ -983,31 +1056,30 @@ namespace Oxide.Plugins
 
         private class VehicleInfoManager
         {
-            VehicleDeployedLocks _pluginInstance;
-
+            private readonly VehicleDeployedLocks _plugin;
             private readonly Dictionary<uint, VehicleInfo> _prefabIdToVehicleInfo = new Dictionary<uint, VehicleInfo>();
             private readonly Dictionary<string, VehicleInfo> _customVehicleTypes = new Dictionary<string, VehicleInfo>();
 
-            public VehicleInfoManager(VehicleDeployedLocks pluginInstance)
+            public VehicleInfoManager(VehicleDeployedLocks plugin)
             {
-                _pluginInstance = pluginInstance;
+                _plugin = plugin;
             }
 
             public void OnServerInitialized()
             {
-                var allVehicles = new VehicleInfo[]
+                var allVehicles = new[]
                 {
                     new VehicleInfo
                     {
                         VehicleType = "chinook",
-                        PrefabPaths = new string[] { "assets/prefabs/npc/ch47/ch47.entity.prefab" },
+                        PrefabPaths = new[] { "assets/prefabs/npc/ch47/ch47.entity.prefab" },
                         LockPosition = new Vector3(-1.175f, 2, 6.5f),
                         TimeSinceLastUsed = (vehicle) => Time.time - (vehicle as CH47Helicopter)?.lastPlayerInputTime ?? Time.time,
                     },
                     new VehicleInfo
                     {
                         VehicleType = "duosub",
-                        PrefabPaths = new string[] { "assets/content/vehicles/submarine/submarineduo.entity.prefab" },
+                        PrefabPaths = new[] { "assets/content/vehicles/submarine/submarineduo.entity.prefab" },
                         LockPosition = new Vector3(-0.455f, 1.29f, 0.75f),
                         LockRotation = Quaternion.Euler(0, 180, 10),
                         TimeSinceLastUsed = (vehicle) => (vehicle as SubmarineDuo)?.timeSinceLastUsed ?? 0,
@@ -1015,14 +1087,14 @@ namespace Oxide.Plugins
                     new VehicleInfo
                     {
                         VehicleType = "hotairballoon",
-                        PrefabPaths = new string[] { "assets/prefabs/deployable/hot air balloon/hotairballoon.prefab" },
+                        PrefabPaths = new[] { "assets/prefabs/deployable/hot air balloon/hotairballoon.prefab" },
                         LockPosition = new Vector3(1.45f, 0.9f, 0),
                         TimeSinceLastUsed = (vehicle) => Time.time - (vehicle as HotAirBalloon)?.lastBlastTime ?? Time.time,
                     },
                     new VehicleInfo
                     {
                         VehicleType = "kayak",
-                        PrefabPaths = new string[] { "assets/content/vehicles/boats/kayak/kayak.prefab" },
+                        PrefabPaths = new[] { "assets/content/vehicles/boats/kayak/kayak.prefab" },
                         LockPosition = new Vector3(-0.43f, 0.2f, 0.2f),
                         LockRotation = Quaternion.Euler(0, 90, 90),
                         TimeSinceLastUsed = (vehicle) => (vehicle as Kayak)?.timeSinceLastUsed ?? 0,
@@ -1030,14 +1102,14 @@ namespace Oxide.Plugins
                     new VehicleInfo
                     {
                         VehicleType = "locomotive",
-                        PrefabPaths = new string[] { "assets/content/vehicles/trains/locomotive/locomotive.entity.prefab" },
+                        PrefabPaths = new[] { "assets/content/vehicles/trains/locomotive/locomotive.entity.prefab" },
                         LockPosition = new Vector3(-0.11f, 2.89f, 4.95f),
                         TimeSinceLastUsed = (vehicle) => (vehicle as TrainEngine)?.decayingFor ?? 0,
                     },
                     new VehicleInfo
                     {
                         VehicleType = "magnetcrane",
-                        PrefabPaths = new string[] { "assets/content/vehicles/crane_magnet/magnetcrane.entity.prefab" },
+                        PrefabPaths = new[] { "assets/content/vehicles/crane_magnet/magnetcrane.entity.prefab" },
                         LockPosition = new Vector3(-1.735f, -1.445f, 0.79f),
                         LockRotation = Quaternion.Euler(0, 0, 90),
                         ParentBone = "Top",
@@ -1046,7 +1118,7 @@ namespace Oxide.Plugins
                     new VehicleInfo
                     {
                         VehicleType = "minicopter",
-                        PrefabPaths = new string[] { "assets/content/vehicles/minicopter/minicopter.entity.prefab" },
+                        PrefabPaths = new[] { "assets/content/vehicles/minicopter/minicopter.entity.prefab" },
                         LockPosition = new Vector3(-0.15f, 0.7f, -0.1f),
                         TimeSinceLastUsed = (vehicle) => Time.time - (vehicle as MiniCopter)?.lastEngineOnTime ?? Time.time,
                     },
@@ -1062,14 +1134,14 @@ namespace Oxide.Plugins
                     new VehicleInfo
                     {
                         VehicleType = "rhib",
-                        PrefabPaths = new string[] { "assets/content/vehicles/boats/rhib/rhib.prefab" },
+                        PrefabPaths = new[] { "assets/content/vehicles/boats/rhib/rhib.prefab" },
                         LockPosition = new Vector3(-0.68f, 2.00f, 0.7f),
                         TimeSinceLastUsed = (vehicle) => (vehicle as RHIB)?.timeSinceLastUsedFuel ?? 0,
                     },
                     new VehicleInfo
                     {
                         VehicleType = "ridablehorse",
-                        PrefabPaths = new string[] { "assets/rust.ai/nextai/testridablehorse.prefab" },
+                        PrefabPaths = new[] { "assets/rust.ai/nextai/testridablehorse.prefab" },
                         LockPosition = new Vector3(-0.6f, 0.35f, -0.1f),
                         LockRotation = Quaternion.Euler(0, 95, 90),
                         ParentBone = "Horse_RootBone",
@@ -1078,41 +1150,41 @@ namespace Oxide.Plugins
                     new VehicleInfo
                     {
                         VehicleType = "rowboat",
-                        PrefabPaths = new string[] { "assets/content/vehicles/boats/rowboat/rowboat.prefab" },
+                        PrefabPaths = new[] { "assets/content/vehicles/boats/rowboat/rowboat.prefab" },
                         LockPosition = new Vector3(-0.83f, 0.51f, -0.57f),
                         TimeSinceLastUsed = (vehicle) => (vehicle as MotorRowboat)?.timeSinceLastUsedFuel ?? 0,
                     },
                     new VehicleInfo
                     {
                         VehicleType = "scraptransport",
-                        PrefabPaths = new string[] { "assets/content/vehicles/scrap heli carrier/scraptransporthelicopter.prefab" },
+                        PrefabPaths = new[] { "assets/content/vehicles/scrap heli carrier/scraptransporthelicopter.prefab" },
                         LockPosition = new Vector3(-1.25f, 1.22f, 1.99f),
                         TimeSinceLastUsed = (vehicle) => Time.time - (vehicle as ScrapTransportHelicopter)?.lastEngineOnTime ?? Time.time,
                     },
                     new VehicleInfo
                     {
                         VehicleType = "sedan",
-                        PrefabPaths = new string[] { "assets/content/vehicles/sedan_a/sedantest.entity.prefab" },
+                        PrefabPaths = new[] { "assets/content/vehicles/sedan_a/sedantest.entity.prefab" },
                         LockPosition = new Vector3(-1.09f, 0.79f, 0.5f),
                     },
                     new VehicleInfo
                     {
                         VehicleType = "sedanrail",
-                        PrefabPaths = new string[] { "assets/content/vehicles/sedan_a/sedanrail.entity.prefab" },
+                        PrefabPaths = new[] { "assets/content/vehicles/sedan_a/sedanrail.entity.prefab" },
                         LockPosition = new Vector3(-1.09f, 1.025f, -0.26f),
                         TimeSinceLastUsed = (vehicle) => (vehicle as TrainEngine)?.decayingFor ?? 0,
                     },
                     new VehicleInfo
                     {
                         VehicleType = "snowmobile",
-                        PrefabPaths = new string[] { "assets/content/vehicles/snowmobiles/snowmobile.prefab" },
+                        PrefabPaths = new[] { "assets/content/vehicles/snowmobiles/snowmobile.prefab" },
                         LockPosition = new Vector3(-0.205f, 0.59f, 0.4f),
                         TimeSinceLastUsed = (vehicle) => (vehicle as Snowmobile)?.timeSinceLastUsed ?? 0,
                     },
                     new VehicleInfo
                     {
                         VehicleType = "solosub",
-                        PrefabPaths = new string[] { "assets/content/vehicles/submarine/submarinesolo.entity.prefab" },
+                        PrefabPaths = new[] { "assets/content/vehicles/submarine/submarinesolo.entity.prefab" },
                         LockPosition = new Vector3(0f, 1.85f, 0f),
                         LockRotation = Quaternion.Euler(0, 90, 90),
                         TimeSinceLastUsed = (vehicle) => (vehicle as BaseSubmarine)?.timeSinceLastUsed ?? 0,
@@ -1120,28 +1192,28 @@ namespace Oxide.Plugins
                     new VehicleInfo
                     {
                         VehicleType = "tomaha",
-                        PrefabPaths = new string[] { "assets/content/vehicles/snowmobiles/tomahasnowmobile.prefab" },
+                        PrefabPaths = new[] { "assets/content/vehicles/snowmobiles/tomahasnowmobile.prefab" },
                         LockPosition = new Vector3(-0.37f, 0.4f, 0.125f),
                         TimeSinceLastUsed = (vehicle) => (vehicle as Snowmobile)?.timeSinceLastUsed ?? 0,
                     },
                     new VehicleInfo
                     {
                         VehicleType = "workcart",
-                        PrefabPaths = new string[] { "assets/content/vehicles/trains/workcart/workcart.entity.prefab" },
+                        PrefabPaths = new[] { "assets/content/vehicles/trains/workcart/workcart.entity.prefab" },
                         LockPosition = new Vector3(-0.2f, 2.35f, 2.7f),
                         TimeSinceLastUsed = (vehicle) => (vehicle as TrainEngine)?.decayingFor ?? 0,
                     },
                     new VehicleInfo
                     {
                         VehicleType = "workcartaboveground",
-                        PrefabPaths = new string[] { "assets/content/vehicles/trains/workcart/workcart_aboveground.entity.prefab" },
+                        PrefabPaths = new[] { "assets/content/vehicles/trains/workcart/workcart_aboveground.entity.prefab" },
                         LockPosition = new Vector3(-0.2f, 2.35f, 2.7f),
                         TimeSinceLastUsed = (vehicle) => (vehicle as TrainEngine)?.decayingFor ?? 0,
                     },
                     new VehicleInfo
                     {
                         VehicleType = "workcartcovered",
-                        PrefabPaths = new string[] { "assets/content/vehicles/trains/workcart/workcart_aboveground2.entity.prefab" },
+                        PrefabPaths = new[] { "assets/content/vehicles/trains/workcart/workcart_aboveground2.entity.prefab" },
                         LockPosition = new Vector3(-0.2f, 2.35f, 2.7f),
                         TimeSinceLastUsed = (vehicle) => (vehicle as TrainEngine)?.decayingFor ?? 0,
                     },
@@ -1149,7 +1221,7 @@ namespace Oxide.Plugins
 
                 foreach (var vehicleInfo in allVehicles)
                 {
-                    vehicleInfo.OnServerInitialized(_pluginInstance);
+                    vehicleInfo.OnServerInitialized(_plugin);
                     foreach (var prefabId in vehicleInfo.PrefabIds)
                     {
                         _prefabIdToVehicleInfo[prefabId] = vehicleInfo;
@@ -1210,7 +1282,7 @@ namespace Oxide.Plugins
                 ItemManager.FindBlueprint(ItemDefinition);
         }
 
-        private readonly LockInfo LockInfo_CodeLock = new LockInfo()
+        private readonly LockInfo LockInfo_CodeLock = new LockInfo
         {
             ItemId = 1159991980,
             Prefab = "assets/prefabs/locks/keypad/lock.code.prefab",
@@ -1219,7 +1291,7 @@ namespace Oxide.Plugins
             PreHookName = "CanDeployVehicleCodeLock",
         };
 
-        private readonly LockInfo LockInfo_KeyLock = new LockInfo()
+        private readonly LockInfo LockInfo_KeyLock = new LockInfo
         {
             ItemId = -850982208,
             Prefab = "assets/prefabs/locks/keylock/lock.key.prefab",
@@ -1234,8 +1306,9 @@ namespace Oxide.Plugins
 
         private class LockedVehicleTracker
         {
-            private VehicleInfoManager _vehicleInfoManager;
-            public Dictionary<VehicleInfo, HashSet<BaseEntity>> VehiclesWithLocksByType { get; private set; } = new Dictionary<VehicleInfo, HashSet<BaseEntity>>();
+            public Dictionary<VehicleInfo, HashSet<BaseEntity>> VehiclesWithLocksByType { get; } = new Dictionary<VehicleInfo, HashSet<BaseEntity>>();
+
+            private readonly VehicleInfoManager _vehicleInfoManager;
 
             public LockedVehicleTracker(VehicleInfoManager vehicleInfoManager)
             {
@@ -1260,20 +1333,12 @@ namespace Oxide.Plugins
 
             public void OnLockAdded(BaseEntity vehicle)
             {
-                var entityList = GetEntityListForVehicle(vehicle);
-                if (entityList == null)
-                    return;
-
-                entityList.Add(vehicle);
+                GetEntityListForVehicle(vehicle)?.Add(vehicle);
             }
 
             public void OnLockRemoved(BaseEntity vehicle)
             {
-                var entityList = GetEntityListForVehicle(vehicle);
-                if (entityList == null)
-                    return;
-
-                entityList.Remove(vehicle);
+                GetEntityListForVehicle(vehicle)?.Remove(vehicle);
             }
 
             private HashSet<BaseEntity> EnsureEntityList(VehicleInfo vehicleInfo)
@@ -1400,8 +1465,6 @@ namespace Oxide.Plugins
             public BaseEntity Entity;
             public BaseLock BaseLock;
             public Vector3 Position;
-
-            public bool IsAvailable() => Entity != null;
 
             public void Assign(BaseEntity entity, BaseLock baseLock)
             {
@@ -1531,30 +1594,34 @@ namespace Oxide.Plugins
 
         private class CooldownManager
         {
-            private readonly Dictionary<string, float> CooldownMap = new Dictionary<string, float>();
-            private readonly float CooldownDuration;
+            private readonly Dictionary<string, float> _cooldownMap = new Dictionary<string, float>();
+            private readonly float _cooldownDuration;
 
             public CooldownManager(float duration)
             {
-                CooldownDuration = duration;
+                _cooldownDuration = duration;
             }
 
-            public void UpdateLastUsedForPlayer(string userID) =>
-                CooldownMap[userID] = Time.realtimeSinceStartup;
+            public void UpdateLastUsedForPlayer(string userID)
+            {
+                _cooldownMap[userID] = Time.realtimeSinceStartup;
+            }
 
             public float GetSecondsRemaining(string userID)
             {
                 float duration;
-                return CooldownMap.TryGetValue(userID, out duration)
-                    ? duration + CooldownDuration - Time.realtimeSinceStartup
+                return _cooldownMap.TryGetValue(userID, out duration)
+                    ? duration + _cooldownDuration - Time.realtimeSinceStartup
                     : 0;
             }
         }
 
-        private CooldownManager GetCooldownManager(LockInfo lockInfo) =>
-            lockInfo == LockInfo_CodeLock
+        private CooldownManager GetCooldownManager(LockInfo lockInfo)
+        {
+            return lockInfo == LockInfo_CodeLock
                 ? _craftCodeLockCooldowns
                 : _craftKeyLockCooldowns;
+        }
 
         #endregion
 
@@ -1599,7 +1666,7 @@ namespace Oxide.Plugins
             public bool Team = false;
         }
 
-        private class Configuration : SerializableConfiguration
+        private class Configuration : BaseConfiguration
         {
             [JsonProperty("AllowIfDifferentOwner")]
             public bool AllowIfDifferentOwner = false;
@@ -1630,9 +1697,9 @@ namespace Oxide.Plugins
 
         #endregion
 
-        #region Configuration Boilerplate
+        #region Configuration Helpers
 
-        private class SerializableConfiguration
+        private class BaseConfiguration
         {
             public string ToJson() => JsonConvert.SerializeObject(this);
 
@@ -1661,7 +1728,7 @@ namespace Oxide.Plugins
             }
         }
 
-        private bool MaybeUpdateConfig(SerializableConfiguration config)
+        private bool MaybeUpdateConfig(BaseConfiguration config)
         {
             var currentWithDefaults = config.ToDictionary();
             var currentRaw = Config.ToDictionary(x => x.Key, x => x.Value);
