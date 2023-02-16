@@ -11,7 +11,7 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("Vehicle Deployed Locks", "WhiteThunder", "1.8.2")]
+    [Info("Vehicle Deployed Locks", "WhiteThunder", "1.9.0")]
     [Description("Allows players to deploy code locks and key locks to vehicles.")]
     internal class VehicleDeployedLocks : CovalencePlugin
     {
@@ -454,20 +454,20 @@ namespace Oxide.Plugins
 
         private bool IsLockSharedWithPlayer(BasePlayer player, BaseLock baseLock)
         {
-            var ownerID = baseLock.OwnerID;
-            if (ownerID == 0 || ownerID == player.userID)
+            var ownerId = baseLock.OwnerID;
+            if (ownerId == 0 || ownerId == player.userID)
                 return false;
 
             // In case the owner was locked out for some reason
             var codeLock = baseLock as CodeLock;
-            if (codeLock != null && !IsPlayerAuthorizedToCodeLock(ownerID, codeLock))
+            if (codeLock != null && !IsPlayerAuthorizedToCodeLock(ownerId, codeLock))
                 return false;
 
             var sharingSettings = _pluginConfig.SharingSettings;
             if (sharingSettings.Team && player.currentTeam != 0)
             {
                 var team = RelationshipManager.ServerInstance.FindTeam(player.currentTeam);
-                if (team != null && team.members.Contains(ownerID))
+                if (team != null && team.members.Contains(ownerId))
                     return true;
             }
 
@@ -481,7 +481,7 @@ namespace Oxide.Plugins
             if ((sharingSettings.Clan || sharingSettings.ClanOrAlly) && Clans != null)
             {
                 var clanMethodName = sharingSettings.ClanOrAlly ? "IsMemberOrAlly" : "IsClanMember";
-                var clanResult = Clans.Call(clanMethodName, ownerID.ToString(), player.UserIDString);
+                var clanResult = Clans.Call(clanMethodName, ownerId.ToString(), player.UserIDString);
                 if (clanResult is bool && (bool)clanResult)
                     return true;
             }
@@ -672,6 +672,12 @@ namespace Oxide.Plugins
             return entity;
         }
 
+        private static void ClaimVehicle(BaseEntity vehicle, ulong ownerId)
+        {
+            vehicle.OwnerID = ownerId;
+            Interface.CallHook("OnVehicleOwnershipChanged", vehicle);
+        }
+
         private bool AllowNoOwner(BaseEntity vehicle)
         {
             return _pluginConfig.AllowIfNoOwner
@@ -715,7 +721,7 @@ namespace Oxide.Plugins
             }
         }
 
-        private BaseLock DeployLock(BaseEntity vehicle, VehicleInfo vehicleInfo, LockInfo lockInfo, ulong ownerID = 0)
+        private BaseLock DeployLock(BaseEntity vehicle, VehicleInfo vehicleInfo, LockInfo lockInfo, ulong ownerId = 0)
         {
             var parentToEntity = vehicleInfo.DetermineLockParent(vehicle);
             if (parentToEntity == null)
@@ -727,18 +733,25 @@ namespace Oxide.Plugins
 
             var keyLock = baseLock as KeyLock;
             if (keyLock != null)
+            {
                 keyLock.keyCode = UnityEngine.Random.Range(1, 100000);
+            }
 
-            if (ownerID != 0)
-                baseLock.OwnerID = ownerID;
+            // Assign lock ownership when the lock is being deployed by/for a player.
+            if (ownerId != 0)
+            {
+                baseLock.OwnerID = ownerId;
+            }
 
             baseLock.SetParent(parentToEntity, vehicleInfo.ParentBone);
             baseLock.Spawn();
             vehicle.SetSlot(BaseEntity.Slot.Lock, baseLock);
 
             // Auto lock key locks to be consistent with vanilla.
-            if (ownerID != 0 && keyLock != null)
+            if (ownerId != 0 && keyLock != null)
+            {
                 keyLock.SetFlag(BaseEntity.Flags.Locked, true);
+            }
 
             Effect.server.Run(Prefab_CodeLock_DeployedEffect, baseLock.transform.position);
             Interface.CallHook("OnVehicleLockDeployed", vehicle, baseLock);
@@ -785,6 +798,20 @@ namespace Oxide.Plugins
             vehicle.OwnerID = originalVehicleOwnerId;
 
             MaybeChargePlayerForLock(player, lockInfo, payType);
+
+            // Potentially assign vehicle ownership when the lock is being deployed by/for a player.
+            if (vehicle.OwnerID == 0)
+            {
+                if (_pluginConfig.AutoClaimUnownedVehicles)
+                {
+                    ClaimVehicle(vehicle, player.userID);
+                }
+            }
+            else if (vehicle.OwnerID != player.userID && _pluginConfig.AutoReplaceVehicleOwnership)
+            {
+                ClaimVehicle(vehicle, player.userID);
+            }
+
             return baseLock;
         }
 
@@ -1703,6 +1730,12 @@ namespace Oxide.Plugins
 
             [JsonProperty("RequireTCIfNoOwner")]
             private bool DeprecatedRequireTCIfNoOwner { set { RequireTCIfNoOwner = value; } }
+
+            [JsonProperty("Auto claim unowned vehicles when deploying locks")]
+            public bool AutoClaimUnownedVehicles;
+
+            [JsonProperty("Auto replace vehicle ownership when deploying locks")]
+            public bool AutoReplaceVehicleOwnership;
 
             [JsonProperty("Allow pushing vehicles while locked out")]
             public bool AllowPushWhileLockedOut = true;
