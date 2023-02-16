@@ -30,7 +30,7 @@ namespace Oxide.Plugins
 
         private const float MaxDeployDistance = 3;
 
-        private Configuration _pluginConfig;
+        private Configuration _config;
 
         private CooldownManager _craftCodeLockCooldowns;
         private CooldownManager _craftKeyLockCooldowns;
@@ -64,10 +64,10 @@ namespace Oxide.Plugins
             permission.RegisterPermission(LockInfo_KeyLock.PermissionFree, this);
             permission.RegisterPermission(LockInfo_KeyLock.PermissionAllVehicles, this);
 
-            _craftKeyLockCooldowns = new CooldownManager(_pluginConfig.CraftCooldownSeconds);
-            _craftCodeLockCooldowns = new CooldownManager(_pluginConfig.CraftCooldownSeconds);
+            _craftKeyLockCooldowns = new CooldownManager(_config.CraftCooldownSeconds);
+            _craftCodeLockCooldowns = new CooldownManager(_config.CraftCooldownSeconds);
 
-            if (_pluginConfig.AllowPushWhileLockedOut)
+            if (_config.AllowPushWhileLockedOut)
             {
                 Unsubscribe(nameof(OnVehiclePush));
             }
@@ -79,7 +79,7 @@ namespace Oxide.Plugins
         {
             _vehicleInfoManager.OnServerInitialized();
             _lockedVehicleTracker.OnServerInitialized();
-            _autoUnlockManager.OnServerInitialized(_pluginConfig.AutoUnlockSettings);
+            _autoUnlockManager.OnServerInitialized(_config.AutoUnlockSettings);
 
             Subscribe(nameof(OnEntityKill));
         }
@@ -112,7 +112,7 @@ namespace Oxide.Plugins
         private object CanLootEntity(BasePlayer player, ModularCarGarage carLift)
         {
             if (carLift == null
-                || _pluginConfig.ModularCarSettings.AllowEditingWhileLockedOut
+                || _config.ModularCarSettings.AllowEditingWhileLockedOut
                 || !carLift.PlatformIsOccupied)
                 return null;
 
@@ -463,7 +463,7 @@ namespace Oxide.Plugins
             if (codeLock != null && !IsPlayerAuthorizedToCodeLock(ownerId, codeLock))
                 return false;
 
-            var sharingSettings = _pluginConfig.SharingSettings;
+            var sharingSettings = _config.SharingSettings;
             if (sharingSettings.Team && player.currentTeam != 0)
             {
                 var team = RelationshipManager.ServerInstance.FindTeam(player.currentTeam);
@@ -680,13 +680,13 @@ namespace Oxide.Plugins
 
         private bool AllowNoOwner(BaseEntity vehicle)
         {
-            return _pluginConfig.AllowIfNoOwner
+            return _config.AllowIfNoOwner
                 || vehicle.OwnerID != 0;
         }
 
         private bool AllowDifferentOwner(IPlayer player, BaseEntity vehicle)
         {
-            return _pluginConfig.AllowIfDifferentOwner
+            return _config.AllowIfDifferentOwner
                 || vehicle.OwnerID == 0
                 || vehicle.OwnerID.ToString() == player.Id;
         }
@@ -802,12 +802,12 @@ namespace Oxide.Plugins
             // Potentially assign vehicle ownership when the lock is being deployed by/for a player.
             if (vehicle.OwnerID == 0)
             {
-                if (_pluginConfig.AutoClaimUnownedVehicles)
+                if (_config.AutoClaimUnownedVehicles)
                 {
                     ClaimVehicle(vehicle, player.userID);
                 }
             }
-            else if (vehicle.OwnerID != player.userID && _pluginConfig.AutoReplaceVehicleOwnership)
+            else if (vehicle.OwnerID != player.userID && _config.AutoReplaceVehicleOwnership)
             {
                 ClaimVehicle(vehicle, player.userID);
             }
@@ -925,7 +925,7 @@ namespace Oxide.Plugins
         {
             var basePlayer = player.Object as BasePlayer;
 
-            if (vehicle.OwnerID == 0 && _pluginConfig.RequireTCIfNoOwner)
+            if (vehicle.OwnerID == 0 && _config.RequireTCIfNoOwner)
             {
                 if (!basePlayer.IsBuildingAuthed() || !basePlayer.IsBuildingAuthed(vehicle.WorldSpaceBounds()))
                 {
@@ -1843,20 +1843,20 @@ namespace Oxide.Plugins
             return changed;
         }
 
-        protected override void LoadDefaultConfig() => _pluginConfig = GetDefaultConfig();
+        protected override void LoadDefaultConfig() => _config = GetDefaultConfig();
 
         protected override void LoadConfig()
         {
             base.LoadConfig();
             try
             {
-                _pluginConfig = Config.ReadObject<Configuration>();
-                if (_pluginConfig == null)
+                _config = Config.ReadObject<Configuration>();
+                if (_config == null)
                 {
                     throw new JsonException();
                 }
 
-                if (MaybeUpdateConfig(_pluginConfig))
+                if (MaybeUpdateConfig(_config))
                 {
                     LogWarning("Configuration appears to be outdated; updating and saving");
                     SaveConfig();
@@ -1873,7 +1873,7 @@ namespace Oxide.Plugins
         protected override void SaveConfig()
         {
             Log($"Configuration changes saved to {Name}.json");
-            Config.WriteObject(_pluginConfig, true);
+            Config.WriteObject(_config, true);
         }
 
         #endregion
