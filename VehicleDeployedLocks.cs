@@ -1,6 +1,5 @@
 ﻿using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-using Newtonsoft.Json.Serialization;
 using Oxide.Core;
 using Oxide.Core.Libraries.Covalence;
 using Oxide.Core.Plugins;
@@ -87,8 +86,7 @@ namespace Oxide.Plugins
         private object CanMountEntity(BasePlayer player, BaseMountable entity)
         {
             // Don't lock taxi modules
-            var carSeat = entity as ModularCarSeat;
-            if (carSeat != null && !carSeat.associatedSeatingModule.DoorsAreLockable)
+            if (!(entity as ModularCarSeat)?.associatedSeatingModule?.DoorsAreLockable ?? false)
                 return null;
 
             return CanPlayerInteractWithParentVehicle(player, entity);
