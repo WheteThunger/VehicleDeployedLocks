@@ -10,7 +10,7 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("Vehicle Deployed Locks", "WhiteThunder", "1.9.0")]
+    [Info("Vehicle Deployed Locks", "WhiteThunder", "1.9.1")]
     [Description("Allows players to deploy code locks and key locks to vehicles.")]
     internal class VehicleDeployedLocks : CovalencePlugin
     {
@@ -227,7 +227,7 @@ namespace Oxide.Plugins
         }
 
         // Allow players to deploy locks directly without any commands.
-        private object CanDeployItem(BasePlayer basePlayer, Deployer deployer, uint entityId)
+        private object CanDeployItem(BasePlayer basePlayer, Deployer deployer, NetworkableId entityId)
         {
             if (basePlayer == null || deployer == null)
                 return null;
