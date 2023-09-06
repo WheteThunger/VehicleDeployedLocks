@@ -10,7 +10,7 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("Vehicle Deployed Locks", "WhiteThunder", "1.9.1")]
+    [Info("Vehicle Deployed Locks", "WhiteThunder", "1.9.2")]
     [Description("Allows players to deploy code locks and key locks to vehicles.")]
     internal class VehicleDeployedLocks : CovalencePlugin
     {
@@ -606,7 +606,7 @@ namespace Oxide.Plugins
 
         private static Item GetPlayerLockItem(BasePlayer player, LockInfo lockInfo)
         {
-            return player.inventory.FindItemID(lockInfo.ItemId);
+            return player.inventory.FindItemByItemID(lockInfo.ItemId);
         }
 
         private static PayType DeterminePayType(IPlayer player, LockInfo lockInfo)
@@ -1145,7 +1145,7 @@ namespace Oxide.Plugins
                         VehicleType = "minicopter",
                         PrefabPaths = new[] { "assets/content/vehicles/minicopter/minicopter.entity.prefab" },
                         LockPosition = new Vector3(-0.15f, 0.7f, -0.1f),
-                        TimeSinceLastUsed = (vehicle) => Time.time - (vehicle as MiniCopter)?.lastEngineOnTime ?? Time.time,
+                        TimeSinceLastUsed = (vehicle) => Time.time - (vehicle as Minicopter)?.lastEngineOnTime ?? Time.time,
                     },
                     new VehicleInfo
                     {
