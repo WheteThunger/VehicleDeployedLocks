@@ -34,6 +34,7 @@ Note: In addition to being able to deploy locks directly, you can also use the f
 The following permissions allow players to deploy code locks to vehicles.
 
 - `vehicledeployedlocks.codelock.allvehicles` (all in one)
+- `vehicledeployedlocks.codelock.attackhelicopter`
 - `vehicledeployedlocks.codelock.chinook`
 - `vehicledeployedlocks.codelock.duosub`
 - `vehicledeployedlocks.codelock.hotairballoon`
@@ -62,6 +63,7 @@ The following permissions allow players to deploy code locks to vehicles.
 The following permissions allow players to deploy key locks to vehicles.
 
 - `vehicledeployedlocks.keylock.allvehicles` (all in one)
+- `vehicledeployedlocks.keylock.attackhelicopter`
 - `vehicledeployedlocks.keylock.chinook`
 - `vehicledeployedlocks.keylock.duosub`
 - `vehicledeployedlocks.keylock.hotairballoon`

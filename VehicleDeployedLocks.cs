@@ -10,7 +10,7 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("Vehicle Deployed Locks", "WhiteThunder", "1.9.2")]
+    [Info("Vehicle Deployed Locks", "WhiteThunder", "1.10.0")]
     [Description("Allows players to deploy code locks and key locks to vehicles.")]
     internal class VehicleDeployedLocks : CovalencePlugin
     {
@@ -1094,6 +1094,13 @@ namespace Oxide.Plugins
             {
                 var allVehicles = new[]
                 {
+                    new VehicleInfo
+                    {
+                        VehicleType = "attackhelicopter",
+                        PrefabPaths = new[] { "assets/content/vehicles/attackhelicopter/attackhelicopter.entity.prefab" },
+                        LockPosition = new Vector3(-0.6f, 1.08f, 1.01f),
+                        TimeSinceLastUsed = (vehicle) => Time.time - (vehicle as AttackHelicopter)?.lastEngineOnTime ?? Time.time,
+                    },
                     new VehicleInfo
                     {
                         VehicleType = "chinook",
