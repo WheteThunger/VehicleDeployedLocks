@@ -80,6 +80,29 @@ namespace Oxide.Plugins
             _lockedVehicleTracker.OnServerInitialized();
             _autoUnlockManager.OnServerInitialized(_config.AutoUnlockSettings);
 
+            if (_config.UpdateLockPositions)
+            {
+                foreach (var networkable in BaseNetworkable.serverEntities)
+                {
+                    var entity = networkable as BaseEntity;
+                    if ((object)entity == null)
+                        continue;
+
+                    var vehicleInfo = _vehicleInfoManager.GetVehicleInfo(entity);
+                    if (vehicleInfo == null)
+                        continue;
+
+                    var lockEntity = GetVehicleLock(entity);
+                    if (lockEntity == null)
+                        continue;
+
+                    var transform = lockEntity.transform;
+                    transform.localPosition = vehicleInfo.LockPosition;
+                    transform.localRotation = vehicleInfo.LockRotation;
+                    lockEntity.SendNetworkUpdate_Position();
+                }
+            }
+
             Subscribe(nameof(OnEntityKill));
         }
 
@@ -1230,6 +1253,14 @@ namespace Oxide.Plugins
                     },
                     new VehicleInfo
                     {
+                        VehicleType = "tugboat",
+                        PrefabPaths = new[] { "assets/content/vehicles/boats/tugboat/tugboat.prefab" },
+                        LockPosition = new Vector3(0.065f, 6.8f, 4.12f),
+                        LockRotation = Quaternion.Euler(0, 90, 60),
+                        TimeSinceLastUsed = (vehicle) => (vehicle as Tugboat)?.timeSinceLastUsedFuel ?? 0,
+                    },
+                    new VehicleInfo
+                    {
                         VehicleType = "workcart",
                         PrefabPaths = new[] { "assets/content/vehicles/trains/workcart/workcart.entity.prefab" },
                         LockPosition = new Vector3(-0.2f, 2.35f, 2.7f),
@@ -1718,6 +1749,9 @@ namespace Oxide.Plugins
 
         private class Configuration : BaseConfiguration
         {
+            [JsonProperty("Update lock positions", DefaultValueHandling = DefaultValueHandling.Ignore)]
+            public bool UpdateLockPositions;
+
             [JsonProperty("Allow deploying locks onto vehicles owned by other players")]
             public bool AllowIfDifferentOwner;
 

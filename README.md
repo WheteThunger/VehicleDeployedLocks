@@ -52,6 +52,7 @@ The following permissions allow players to deploy code locks to vehicles.
 - `vehicledeployedlocks.codelock.snowmobile`
 - `vehicledeployedlocks.codelock.solosub`
 - `vehicledeployedlocks.codelock.tomaha`
+- `vehicledeployedlocks.codelock.tugboat`
 - `vehicledeployedlocks.codelock.workcart`
 - `vehicledeployedlocks.codelock.workcartaboveground`
 - `vehicledeployedlocks.codelock.workcartcovered`
@@ -81,6 +82,7 @@ The following permissions allow players to deploy key locks to vehicles.
 - `vehicledeployedlocks.keylock.snowmobile`
 - `vehicledeployedlocks.keylock.solosub`
 - `vehicledeployedlocks.keylock.tomaha`
+- `vehicledeployedlocks.keylock.tugboat`
 - `vehicledeployedlocks.keylock.workcart`
 - `vehicledeployedlocks.keylock.workcartaboveground`
 - `vehicledeployedlocks.keylock.workcartcovered`
@@ -306,7 +308,7 @@ This is an Oxide hook that is normally called when a player attempts to use a lo
 - Returning `null` will result in the default behavior.
 
 ```csharp
-bool? CanUseLockedEntity(BasePlayer player, BaseLock baseLock)
+object CanUseLockedEntity(BasePlayer player, BaseLock baseLock)
 {
     // Example: Only let the lock owner access the car
     if (baseLock == null) return null;
