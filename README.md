@@ -9,10 +9,12 @@
 
 ### Notes
 
-- Modular cars must have a cockpit module (i.e., driver seat) to receive a lock. The lock will deploy to the front-most cockpit module if there are multiple. If that cockpit is removed, the lock is moved to another cockpit module if present, else destroyed.
+- The "Lock" and "Unlock" prompts appear on many vehicles while using them. Sometimes this is useful, but sometimes it just takes up space on your screen. Unfortunately, the plugin can't change this behavior because it's controlled client-side.
+- Modular cars must have a cockpit module (i.e., driver seat) to receive a lock. The lock will deploy to the front-most cockpit module if there are multiple. If that cockpit is removed, the lock is moved to another cockpit module if present, else the lock will be destroyed.
 - Modular cars may have a built-in lock at the same time as a deployed lock. This is not recommended, but if this happens, players will need to simultaneously satisfy the rules of the built-in lock and the deployed lock in order to access the car.
 - Locks do not prevent players from entering transport bays like a modular car flatbed or the back of a scrap transport helicopter.
-- The lock position for rideable horses is a bit awkward and sticks out significantly, but this is required in order for the player to be able to interact with it in most positions.
+- Locks on Tugboats cannot be interacted with except within 3 meters from the lock, despite the "Lock" and "Unlock" prompts being visible farther away than 3 meters.
+- Doors on Tugboats still needs locks to block opening and closing them. This could possibly be changed on request.
 
 ## Commands
 
