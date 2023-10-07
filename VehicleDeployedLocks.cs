@@ -1197,7 +1197,7 @@ namespace Oxide.Plugins
                     {
                         VehicleType = "ridablehorse",
                         PrefabPaths = new[] { "assets/rust.ai/nextai/testridablehorse.prefab" },
-                        LockPosition = new Vector3(-0.6f, 0.35f, -0.1f),
+                        LockPosition = new Vector3(-0.6f, 0.25f, -0.1f),
                         LockRotation = Quaternion.Euler(0, 95, 90),
                         ParentBone = "Horse_RootBone",
                         TimeSinceLastUsed = (vehicle) => Time.time - (vehicle as RidableHorse)?.lastInputTime ?? Time.time,
