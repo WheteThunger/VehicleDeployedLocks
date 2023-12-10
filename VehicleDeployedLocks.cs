@@ -516,6 +516,9 @@ namespace Oxide.Plugins
             if (hookResult is bool)
                 return (bool)hookResult;
 
+            if (_config.AllowNPCsToBypassLocks && (player.IsNpc || !player.userID.IsSteamId()))
+                return true;
+
             var canAccessLock = IsPlayerAuthorizedToLock(player, baseLock)
                 || IsLockSharedWithPlayer(player, baseLock)
                 || PlayerHasMasterKeyForLock(player);
@@ -1751,6 +1754,9 @@ namespace Oxide.Plugins
         {
             [JsonProperty("Update lock positions", DefaultValueHandling = DefaultValueHandling.Ignore)]
             public bool UpdateLockPositions;
+
+            [JsonProperty("Allow NPCs to bypass locks")]
+            public bool AllowNPCsToBypassLocks;
 
             [JsonProperty("Allow deploying locks onto vehicles owned by other players")]
             public bool AllowIfDifferentOwner;
