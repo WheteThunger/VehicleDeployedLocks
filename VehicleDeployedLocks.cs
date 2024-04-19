@@ -279,11 +279,7 @@ namespace Oxide.Plugins
                 return null;
             }
 
-            var vehicle = GetVehicleFromEntity(BaseNetworkable.serverEntities.Find(entityId) as BaseEntity, basePlayer);
-            if (vehicle == null)
-                return null;
-
-            var vehicleInfo = _vehicleInfoManager.GetVehicleInfo(vehicle);
+            var vehicleInfo = GetVehicleAndInfo(BaseNetworkable.serverEntities.Find(entityId) as BaseEntity, basePlayer, out var vehicle, fromDeployHook: true);
             if (vehicleInfo == null)
                 return null;
 
@@ -395,9 +391,8 @@ namespace Oxide.Plugins
                 return;
 
             var basePlayer = player.Object as BasePlayer;
-            VehicleInfo vehicleInfo;
-            var vehicle = GetVehicleFromEntity(GetLookEntity(basePlayer, MaxDeployDistance), basePlayer);
-            if (vehicle == null || !TryGet(_vehicleInfoManager.GetVehicleInfo(vehicle), out vehicleInfo))
+            var vehicleInfo = GetVehicleAndInfo(GetLookEntity(basePlayer, MaxDeployDistance), basePlayer, out var vehicle);
+            if (vehicleInfo == null)
             {
                 ReplyToPlayer(player, Lang.DeployErrorNoVehicleFound);
                 return;
@@ -434,6 +429,14 @@ namespace Oxide.Plugins
         private static BaseLock GetVehicleLock(BaseEntity vehicle)
         {
             return vehicle.GetSlot(BaseEntity.Slot.Lock) as BaseLock;
+        }
+
+        private static bool IsLockableEntity(BaseEntity entity)
+        {
+            if (entity.IsBusy())
+                return false;
+
+            return entity.HasSlot(BaseEntity.Slot.Lock);
         }
 
         private static string[] FindPrefabsOfType<T>() where T : BaseEntity
@@ -676,30 +679,60 @@ namespace Oxide.Plugins
             return closestHorse;
         }
 
-        private static BaseEntity GetVehicleFromEntity(BaseEntity entity, BasePlayer basePlayer)
-        {
-            if (entity == null)
-                return null;
-
-            var module = entity as BaseVehicleModule;
-            if (module != null)
-                return module.Vehicle;
-
-            var carLift = entity as ModularCarGarage;
-            if ((object)carLift != null)
-                return carLift.carOccupant;
-
-            var hitchTrough = entity as HitchTrough;
-            if ((object)hitchTrough != null)
-                return GetClosestHorse(hitchTrough, basePlayer);
-
-            return entity;
-        }
-
         private static void ClaimVehicle(BaseEntity vehicle, ulong ownerId)
         {
             vehicle.OwnerID = ownerId;
             Interface.CallHook("OnVehicleOwnershipChanged", vehicle);
+        }
+
+        private VehicleInfo GetVehicleAndInfo(BaseEntity entity, BasePlayer basePlayer, out BaseEntity vehicle, bool fromDeployHook = false)
+        {
+            if (entity == null)
+            {
+                vehicle = null;
+                return null;
+            }
+
+            var vehicleInfo = _vehicleInfoManager.GetVehicleInfo(entity);
+            if (vehicleInfo != null)
+            {
+                vehicle = entity;
+                return vehicleInfo;
+            }
+
+            var module = entity as BaseVehicleModule;
+            if (module != null)
+            {
+                vehicle = module.Vehicle ?? module.GetParentEntity();
+                return _vehicleInfoManager.GetVehicleInfo(vehicle);
+            }
+
+            var carLift = entity as ModularCarGarage;
+            if ((object)carLift != null)
+            {
+                 vehicle = carLift.carOccupant;
+                 return _vehicleInfoManager.GetVehicleInfo(vehicle);
+            }
+
+            var hitchTrough = entity as HitchTrough;
+            if ((object)hitchTrough != null)
+            {
+                vehicle = GetClosestHorse(hitchTrough, basePlayer);
+                return _vehicleInfoManager.GetVehicleInfo(vehicle);
+            }
+
+            if (fromDeployHook && IsLockableEntity(entity))
+            {
+                // Let the game decide whether to lock the entity, instead of resolving the parent vehicle.
+                vehicle = null;
+                return null;
+            }
+
+            vehicle = entity.GetParentEntity();
+            if (vehicle == null)
+                return null;
+
+            return _vehicleInfoManager.GetVehicleInfo(vehicle);
         }
 
         private bool AllowNoOwner(BaseEntity vehicle)
