@@ -6,11 +6,12 @@ using Oxide.Core.Plugins;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("Vehicle Deployed Locks", "WhiteThunder", "1.12.0")]
+    [Info("Vehicle Deployed Locks", "WhiteThunder", "1.13.0")]
     [Description("Allows players to deploy code locks and key locks to vehicles.")]
     internal class VehicleDeployedLocks : CovalencePlugin
     {
@@ -1141,6 +1142,9 @@ namespace Oxide.Plugins
 
         private class VehicleInfoManager
         {
+            private static readonly FieldInfo BikeTimeSinceLastUsedField = typeof(Bike).GetField("timeSinceLastUsed",
+                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+
             private readonly VehicleDeployedLocks _plugin;
             private readonly Dictionary<uint, VehicleInfo> _prefabIdToVehicleInfo = new();
             private readonly Dictionary<string, VehicleInfo> _customVehicleTypes = new();
@@ -1222,6 +1226,34 @@ namespace Oxide.Plugins
                         LockPosition = new Vector3(-0.9f, 0.35f, -0.5f),
                         DetermineLockParent = vehicle => FindFirstDriverModule((ModularCar)vehicle),
                         TimeSinceLastUsed = vehicle => Time.time - (vehicle as ModularCar)?.lastEngineOnTime ?? Time.time,
+                    },
+                    new VehicleInfo
+                    {
+                        VehicleType = "motorbike.sidecar",
+                        PrefabPaths = new[] { "assets/content/vehicles/bikes/motorbike_sidecar.prefab" },
+                        LockPosition = new Vector3(-0.09f, 0.65f, 0.03f),
+                        TimeSinceLastUsed = vehicle => (TimeSince)BikeTimeSinceLastUsedField.GetValue(vehicle),
+                    },
+                    new VehicleInfo
+                    {
+                        VehicleType = "motorbike",
+                        PrefabPaths = new[] { "assets/content/vehicles/bikes/motorbike.prefab" },
+                        LockPosition = new Vector3(-0.09f, 0.65f, 0.03f),
+                        TimeSinceLastUsed = vehicle => (TimeSince)BikeTimeSinceLastUsedField.GetValue(vehicle),
+                    },
+                    new VehicleInfo
+                    {
+                        VehicleType = "pedalbike",
+                        PrefabPaths = new[] { "assets/content/vehicles/bikes/pedalbike.prefab" },
+                        LockPosition = new Vector3(0, 0.6f, 0.1f),
+                        TimeSinceLastUsed = vehicle => (TimeSince)BikeTimeSinceLastUsedField.GetValue(vehicle),
+                    },
+                    new VehicleInfo
+                    {
+                        VehicleType = "pedaltrike",
+                        PrefabPaths = new[] { "assets/content/vehicles/bikes/pedaltrike.prefab" },
+                        LockPosition = new Vector3(0, 0.6f, 0.1f),
+                        TimeSinceLastUsed = vehicle => (TimeSince)BikeTimeSinceLastUsedField.GetValue(vehicle),
                     },
                     new VehicleInfo
                     {
