@@ -11,7 +11,7 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("Vehicle Deployed Locks", "WhiteThunder", "1.13.0")]
+    [Info("Vehicle Deployed Locks", "WhiteThunder", "1.13.1")]
     [Description("Allows players to deploy code locks and key locks to vehicles.")]
     internal class VehicleDeployedLocks : CovalencePlugin
     {
@@ -1185,7 +1185,7 @@ namespace Oxide.Plugins
                         VehicleType = "hotairballoon",
                         PrefabPaths = new[] { "assets/prefabs/deployable/hot air balloon/hotairballoon.prefab" },
                         LockPosition = new Vector3(1.45f, 0.9f, 0),
-                        TimeSinceLastUsed = vehicle => Time.time - (vehicle as HotAirBalloon)?.lastBlastTime ?? Time.time,
+                        TimeSinceLastUsed = vehicle => Time.time - (vehicle as HotAirBalloon)?.sinceLastBlast ?? Time.time,
                     },
                     new VehicleInfo
                     {
