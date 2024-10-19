@@ -11,7 +11,7 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("Vehicle Deployed Locks", "WhiteThunder", "1.13.1")]
+    [Info("Vehicle Deployed Locks", "WhiteThunder", "1.13.2")]
     [Description("Allows players to deploy code locks and key locks to vehicles.")]
     internal class VehicleDeployedLocks : CovalencePlugin
     {
@@ -684,6 +684,31 @@ namespace Oxide.Plugins
             Interface.CallHook("OnVehicleOwnershipChanged", vehicle);
         }
 
+        private bool IsVehicleConnectedEntity(BasePlayer basePlayer, BaseEntity entity, out BaseEntity vehicle)
+        {
+            vehicle = null;
+
+            if (entity is BaseVehicleModule module)
+            {
+                vehicle = module.Vehicle ?? module.GetParentEntity();
+                return true;
+            }
+
+            if (entity is ModularCarGarage carLift)
+            {
+                vehicle = carLift.carOccupant;
+                return true;
+            }
+
+            if (entity is HitchTrough hitchTrough)
+            {
+                vehicle = GetClosestHorse(hitchTrough, basePlayer);
+                return true;
+            }
+
+            return false;
+        }
+
         private VehicleInfo GetVehicleAndInfo(BaseEntity entity, BasePlayer basePlayer, out BaseEntity vehicle, bool fromDeployHook = false)
         {
             if (entity == null)
@@ -699,26 +724,8 @@ namespace Oxide.Plugins
                 return vehicleInfo;
             }
 
-            var module = entity as BaseVehicleModule;
-            if (module != null)
-            {
-                vehicle = module.Vehicle ?? module.GetParentEntity();
+            if (IsVehicleConnectedEntity(basePlayer, entity, out vehicle) && vehicle != null)
                 return _vehicleInfoManager.GetVehicleInfo(vehicle);
-            }
-
-            var carLift = entity as ModularCarGarage;
-            if ((object)carLift != null)
-            {
-                 vehicle = carLift.carOccupant;
-                 return _vehicleInfoManager.GetVehicleInfo(vehicle);
-            }
-
-            var hitchTrough = entity as HitchTrough;
-            if ((object)hitchTrough != null)
-            {
-                vehicle = GetClosestHorse(hitchTrough, basePlayer);
-                return _vehicleInfoManager.GetVehicleInfo(vehicle);
-            }
 
             if (fromDeployHook && IsLockableEntity(entity))
             {
