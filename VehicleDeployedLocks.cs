@@ -110,7 +110,7 @@ namespace Oxide.Plugins
         private object CanMountEntity(BasePlayer player, BaseMountable entity)
         {
             // Don't lock taxi modules
-            if (!(entity as ModularCarSeat)?.associatedSeatingModule?.DoorsAreLockable ?? false)
+            if (entity is ModularCarSeat carSeat && IsTaxiSeat(carSeat))
                 return null;
 
             return CanPlayerInteractWithParentVehicle(player, entity);
@@ -118,7 +118,7 @@ namespace Oxide.Plugins
 
         private object CanLootEntity(BasePlayer player, StorageContainer container)
         {
-            // Don't lock taxi module shop fronts
+            // Don't lock taxi module shopfronts
             if (container is ModularVehicleShopFront)
                 return null;
 
@@ -195,7 +195,7 @@ namespace Oxide.Plugins
         private object CanSwapToSeat(BasePlayer player, ModularCarSeat carSeat)
         {
             // Don't lock taxi modules
-            if (!carSeat.associatedSeatingModule.DoorsAreLockable)
+            if (IsTaxiSeat(carSeat))
                 return null;
 
             return CanPlayerInteractWithParentVehicle(player, carSeat, provideFeedback: false);
@@ -456,6 +456,11 @@ namespace Oxide.Plugins
             return prefabList.ToArray();
         }
 
+        private static bool IsTaxiSeat(ModularCarSeat carSeat)
+        {
+            return carSeat is { associatedSeatingModule.DoorsAreLockable: false };
+        }
+
         #endregion
 
         #region Helper Methods - Lock Authorization
@@ -589,8 +594,7 @@ namespace Oxide.Plugins
 
         private static bool DeployWasBlocked(BaseEntity vehicle, BasePlayer player, LockInfo lockInfo)
         {
-            var hookResult = Interface.CallHook(lockInfo.PreHookName, vehicle, player);
-            return hookResult is bool && (bool)hookResult == false;
+            return Interface.CallHook(lockInfo.PreHookName, vehicle, player) is false;
         }
 
         private static BaseEntity GetLookEntity(BasePlayer player, float maxDistance)
@@ -987,6 +991,8 @@ namespace Oxide.Plugins
         private bool VerifyCanBuild(IPlayer player, BaseEntity vehicle)
         {
             var basePlayer = player.Object as BasePlayer;
+            if (basePlayer == null)
+                return false;
 
             if (vehicle.OwnerID == 0 && _config.RequireTCIfNoOwner)
             {
@@ -1413,11 +1419,9 @@ namespace Oxide.Plugins
             public string PermissionFree;
             public string PreHookName;
 
-            public ItemDefinition ItemDefinition =>
-                ItemManager.FindItemDefinition(ItemId);
+            public ItemDefinition ItemDefinition => ItemManager.FindItemDefinition(ItemId);
 
-            public ItemBlueprint Blueprint =>
-                ItemManager.FindBlueprint(ItemDefinition);
+            public ItemBlueprint Blueprint => ItemManager.FindBlueprint(ItemDefinition);
         }
 
         private readonly LockInfo LockInfo_CodeLock = new()
@@ -1764,25 +1768,25 @@ namespace Oxide.Plugins
             public float IdleSeconds = 3600;
 
             [JsonProperty("IdleSeconds")]
-            private float DeprecatedIdleSeconds { set { IdleSeconds = value; } }
+            private float DeprecatedIdleSeconds { set => IdleSeconds = value; }
 
             [JsonProperty("Check interval seconds")]
             public float CheckIntervalSeconds = 300;
 
             [JsonProperty("CheckIntervalSeconds")]
-            private float DeprecatedCheckIntervalSeconds { set { CheckIntervalSeconds = value; } }
+            private float DeprecatedCheckIntervalSeconds { set => CheckIntervalSeconds = value; }
 
             [JsonProperty("Exempt owned vehicles")]
             public bool ExemptOwnedVehicles = true;
 
             [JsonProperty("ExemptOwnedVehicles")]
-            private bool DeprecatedExemptOwnedVehicles { set { ExemptOwnedVehicles = value; } }
+            private bool DeprecatedExemptOwnedVehicles { set => ExemptOwnedVehicles = value; }
 
             [JsonProperty("Exempt vehicles near cupboards")]
             public bool ExemptNearTC = true;
 
             [JsonProperty("ExemptNearTC")]
-            private bool DeprecatedExemptNearTC { set { ExemptNearTC = value; } }
+            private bool DeprecatedExemptNearTC { set => ExemptNearTC = value; }
         }
 
         private class ModularCarSettings
@@ -1791,7 +1795,7 @@ namespace Oxide.Plugins
             public bool AllowEditingWhileLockedOut = true;
 
             [JsonProperty("AllowEditingWhileLockedOut")]
-            private bool DeprecatedAllowEditingWhileLockedOut { set { AllowEditingWhileLockedOut = value; } }
+            private bool DeprecatedAllowEditingWhileLockedOut { set => AllowEditingWhileLockedOut = value; }
         }
 
         private class SharingSettings
@@ -1803,7 +1807,7 @@ namespace Oxide.Plugins
             public bool ClanOrAlly;
 
             [JsonProperty("ClanOrAlly")]
-            private bool DeprecatedClanOrAlly { set { ClanOrAlly = value; } }
+            private bool DeprecatedClanOrAlly { set => ClanOrAlly = value; }
 
             [JsonProperty("Friends")]
             public bool Friends;
@@ -1824,19 +1828,19 @@ namespace Oxide.Plugins
             public bool AllowIfDifferentOwner;
 
             [JsonProperty("AllowIfDifferentOwner")]
-            private bool DeprecatedAllowIfDifferentOwner { set { AllowIfDifferentOwner = value; } }
+            private bool DeprecatedAllowIfDifferentOwner { set => AllowIfDifferentOwner = value; }
 
             [JsonProperty("Allow deploying locks onto unowned vehicles")]
             public bool AllowIfNoOwner = true;
 
             [JsonProperty("AllowIfNoOwner")]
-            private bool DeprecatedAllowIfNoOwner { set { AllowIfNoOwner = value; } }
+            private bool DeprecatedAllowIfNoOwner { set => AllowIfNoOwner = value; }
 
             [JsonProperty("Require cupboard auth to deploy locks onto unowned vehicles")]
             public bool RequireTCIfNoOwner;
 
             [JsonProperty("RequireTCIfNoOwner")]
-            private bool DeprecatedRequireTCIfNoOwner { set { RequireTCIfNoOwner = value; } }
+            private bool DeprecatedRequireTCIfNoOwner { set => RequireTCIfNoOwner = value; }
 
             [JsonProperty("Auto claim unowned vehicles when deploying locks")]
             public bool AutoClaimUnownedVehicles;
@@ -1848,31 +1852,31 @@ namespace Oxide.Plugins
             public bool AllowPushWhileLockedOut = true;
 
             [JsonProperty("AllowPushWhileLockedOut")]
-            private bool DeprecatedAllowPushWhileLockedOut { set { AllowPushWhileLockedOut = value; } }
+            private bool DeprecatedAllowPushWhileLockedOut { set => AllowPushWhileLockedOut = value; }
 
             [JsonProperty("Cooldown to auto craft locks (seconds)")]
             public float CraftCooldownSeconds = 10;
 
             [JsonProperty("CraftCooldownSeconds")]
-            private float DeprecatedCraftCooldownSeconds { set { CraftCooldownSeconds = value; } }
+            private float DeprecatedCraftCooldownSeconds { set => CraftCooldownSeconds = value; }
 
             [JsonProperty("Modular car settings")]
             public ModularCarSettings ModularCarSettings = new();
 
             [JsonProperty("ModularCarSettings")]
-            private ModularCarSettings DeprecatedModularCarSettings { set { ModularCarSettings = value; } }
+            private ModularCarSettings DeprecatedModularCarSettings { set => ModularCarSettings = value; }
 
             [JsonProperty("Lock sharing settings")]
             public SharingSettings SharingSettings = new();
 
             [JsonProperty("DefaultSharingSettings")]
-            private SharingSettings DeprecatedSharingSettings { set { SharingSettings = value; } }
+            private SharingSettings DeprecatedSharingSettings { set => SharingSettings = value; }
 
             [JsonProperty("Auto unlock idle vehicles")]
             public AutoUnlockSettings AutoUnlockSettings = new();
 
             [JsonProperty("AutoUnlockIdleVehicles")]
-            private AutoUnlockSettings DeprecatedAutoUnlockSettings { set { AutoUnlockSettings = value; } }
+            private AutoUnlockSettings DeprecatedAutoUnlockSettings { set => AutoUnlockSettings = value; }
         }
 
         private Configuration GetDefaultConfig() => new();
