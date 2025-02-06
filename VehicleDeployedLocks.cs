@@ -11,7 +11,7 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("Vehicle Deployed Locks", "WhiteThunder", "1.13.2")]
+    [Info("Vehicle Deployed Locks", "WhiteThunder", "1.13.3")]
     [Description("Allows players to deploy code locks and key locks to vehicles.")]
     internal class VehicleDeployedLocks : CovalencePlugin
     {
@@ -663,7 +663,7 @@ namespace Oxide.Plugins
 
         private static RidableHorse GetClosestHorse(HitchTrough hitchTrough, BasePlayer player)
         {
-            var closestDistance = 1000f;
+            var closestDistance = float.MaxValue;
             RidableHorse closestHorse = null;
 
             foreach (var hitchSpot in hitchTrough.hitchSpots)
@@ -671,11 +671,14 @@ namespace Oxide.Plugins
                 if (!hitchSpot.IsOccupied())
                     continue;
 
-                var distance = Vector3.Distance(player.transform.position, hitchSpot.spot.position);
+                var distance = Vector3.Distance(player.transform.position, hitchSpot.tr.position);
                 if (distance < closestDistance)
                 {
                     closestDistance = distance;
-                    closestHorse = hitchSpot.horse.Get(serverside: true) as RidableHorse;
+                    if (hitchSpot.hitchableEntRef.Get(serverside: true) is RidableHorse ridableHorse)
+                    {
+                        closestHorse = ridableHorse;
+                    }
                 }
             }
 
