@@ -11,7 +11,7 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("Vehicle Deployed Locks", "WhiteThunder", "1.13.3")]
+    [Info("Vehicle Deployed Locks", "WhiteThunder", "1.13.4")]
     [Description("Allows players to deploy code locks and key locks to vehicles.")]
     internal class VehicleDeployedLocks : CovalencePlugin
     {
@@ -135,6 +135,11 @@ namespace Oxide.Plugins
             return CanPlayerInteractWithVehicle(player, horse);
         }
 
+        private object CanLootEntity(BasePlayer player, RidableHorse2 horse)
+        {
+            return CanPlayerInteractWithVehicle(player, horse);
+        }
+
         private object CanLootEntity(BasePlayer player, ModularCarGarage carLift)
         {
             if (carLift == null
@@ -146,6 +151,11 @@ namespace Oxide.Plugins
         }
 
         private object OnHorseLead(RidableHorse horse, BasePlayer player)
+        {
+            return CanPlayerInteractWithVehicle(player, horse);
+        }
+
+        private object OnHorseLead(RidableHorse2 horse, BasePlayer player)
         {
             return CanPlayerInteractWithVehicle(player, horse);
         }
@@ -661,10 +671,10 @@ namespace Oxide.Plugins
             return player.inventory.crafting.CanCraft(lockInfo.ItemDefinition);
         }
 
-        private static RidableHorse GetClosestHorse(HitchTrough hitchTrough, BasePlayer player)
+        private static RidableHorse2 GetClosestHorse(HitchTrough hitchTrough, BasePlayer player)
         {
             var closestDistance = float.MaxValue;
-            RidableHorse closestHorse = null;
+            RidableHorse2 closestHorse = null;
 
             foreach (var hitchSpot in hitchTrough.hitchSpots)
             {
@@ -675,7 +685,7 @@ namespace Oxide.Plugins
                 if (distance < closestDistance)
                 {
                     closestDistance = distance;
-                    if (hitchSpot.hitchableEntRef.Get(serverside: true) is RidableHorse ridableHorse)
+                    if (hitchSpot.hitchableEntRef.Get(serverside: true) is RidableHorse2 ridableHorse)
                     {
                         closestHorse = ridableHorse;
                     }
@@ -1281,11 +1291,26 @@ namespace Oxide.Plugins
                     new VehicleInfo
                     {
                         VehicleType = "ridablehorse",
-                        PrefabPaths = new[] { "assets/rust.ai/nextai/testridablehorse.prefab" },
+                        PrefabPaths = new[]
+                        {
+                            "assets/content/vehicles/horse/ridablehorse2.prefab",
+                            "assets/content/vehicles/horse/_old/testridablehorse.prefab",
+                            "assets/rust.ai/nextai/testridablehorse.prefab",
+                        },
                         LockPosition = new Vector3(-0.6f, 0.25f, -0.1f),
                         LockRotation = Quaternion.Euler(0, 95, 90),
                         ParentBone = "Horse_RootBone",
-                        TimeSinceLastUsed = vehicle => Time.time - (vehicle as RidableHorse)?.lastInputTime ?? Time.time,
+                        TimeSinceLastUsed = vehicle =>
+                        {
+                            var lastInputTime = vehicle switch
+                            {
+                                RidableHorse ridableHorse => ridableHorse.lastInputTime,
+                                RidableHorse2 ridableHorse2 => ridableHorse2.lastRiddenTime,
+                                _ => Time.time,
+                            };
+
+                            return Time.time - lastInputTime;
+                        },
                     },
                     new VehicleInfo
                     {
