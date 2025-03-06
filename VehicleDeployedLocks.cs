@@ -11,7 +11,7 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("Vehicle Deployed Locks", "WhiteThunder", "1.13.4")]
+    [Info("Vehicle Deployed Locks", "WhiteThunder", "1.13.5")]
     [Description("Allows players to deploy code locks and key locks to vehicles.")]
     internal class VehicleDeployedLocks : CovalencePlugin
     {
@@ -1295,7 +1295,6 @@ namespace Oxide.Plugins
                         {
                             "assets/content/vehicles/horse/ridablehorse2.prefab",
                             "assets/content/vehicles/horse/_old/testridablehorse.prefab",
-                            "assets/rust.ai/nextai/testridablehorse.prefab",
                         },
                         LockPosition = new Vector3(-0.6f, 0.25f, -0.1f),
                         LockRotation = Quaternion.Euler(0, 95, 90),
