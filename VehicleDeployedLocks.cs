@@ -11,7 +11,7 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("Vehicle Deployed Locks", "WhiteThunder", "1.13.5")]
+    [Info("Vehicle Deployed Locks", "WhiteThunder", "1.13.6")]
     [Description("Allows players to deploy code locks and key locks to vehicles.")]
     internal class VehicleDeployedLocks : CovalencePlugin
     {
@@ -135,11 +135,6 @@ namespace Oxide.Plugins
             return CanPlayerInteractWithVehicle(player, horse);
         }
 
-        private object CanLootEntity(BasePlayer player, RidableHorse2 horse)
-        {
-            return CanPlayerInteractWithVehicle(player, horse);
-        }
-
         private object CanLootEntity(BasePlayer player, ModularCarGarage carLift)
         {
             if (carLift == null
@@ -151,11 +146,6 @@ namespace Oxide.Plugins
         }
 
         private object OnHorseLead(RidableHorse horse, BasePlayer player)
-        {
-            return CanPlayerInteractWithVehicle(player, horse);
-        }
-
-        private object OnHorseLead(RidableHorse2 horse, BasePlayer player)
         {
             return CanPlayerInteractWithVehicle(player, horse);
         }
@@ -671,10 +661,10 @@ namespace Oxide.Plugins
             return player.inventory.crafting.CanCraft(lockInfo.ItemDefinition);
         }
 
-        private static RidableHorse2 GetClosestHorse(HitchTrough hitchTrough, BasePlayer player)
+        private static RidableHorse GetClosestHorse(HitchTrough hitchTrough, BasePlayer player)
         {
             var closestDistance = float.MaxValue;
-            RidableHorse2 closestHorse = null;
+            RidableHorse closestHorse = null;
 
             foreach (var hitchSpot in hitchTrough.hitchSpots)
             {
@@ -685,7 +675,7 @@ namespace Oxide.Plugins
                 if (distance < closestDistance)
                 {
                     closestDistance = distance;
-                    if (hitchSpot.hitchableEntRef.Get(serverside: true) is RidableHorse2 ridableHorse)
+                    if (hitchSpot.hitchableEntRef.Get(serverside: true) is RidableHorse ridableHorse)
                     {
                         closestHorse = ridableHorse;
                     }
@@ -976,8 +966,8 @@ namespace Oxide.Plugins
 
         private bool VerifyNotForSale(IPlayer player, BaseEntity vehicle)
         {
-            var rideableAnimal = vehicle as BaseRidableAnimal;
-            if (rideableAnimal == null || !rideableAnimal.IsForSale())
+            var horse = vehicle as RidableHorse;
+            if (horse == null || !horse.IsForSale)
                 return true;
 
             ReplyToPlayer(player, Lang.DeployErrorOther);
@@ -1291,25 +1281,11 @@ namespace Oxide.Plugins
                     new VehicleInfo
                     {
                         VehicleType = "ridablehorse",
-                        PrefabPaths = new[]
-                        {
-                            "assets/content/vehicles/horse/ridablehorse2.prefab",
-                            "assets/content/vehicles/horse/_old/testridablehorse.prefab",
-                        },
+                        PrefabPaths = new[] { "assets/content/vehicles/horse/ridablehorse.prefab" },
                         LockPosition = new Vector3(-0.6f, 0.25f, -0.1f),
                         LockRotation = Quaternion.Euler(0, 95, 90),
                         ParentBone = "Horse_RootBone",
-                        TimeSinceLastUsed = vehicle =>
-                        {
-                            var lastInputTime = vehicle switch
-                            {
-                                RidableHorse ridableHorse => ridableHorse.lastInputTime,
-                                RidableHorse2 ridableHorse2 => ridableHorse2.lastRiddenTime,
-                                _ => Time.time,
-                            };
-
-                            return Time.time - lastInputTime;
-                        },
+                        TimeSinceLastUsed = vehicle => Time.time - (vehicle as RidableHorse)?.lastRiddenTime ?? Time.time,
                     },
                     new VehicleInfo
                     {
