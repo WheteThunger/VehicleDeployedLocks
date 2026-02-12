@@ -11,7 +11,7 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("Vehicle Deployed Locks", "WhiteThunder", "1.13.6")]
+    [Info("Vehicle Deployed Locks", "WhiteThunder", "1.13.7")]
     [Description("Allows players to deploy code locks and key locks to vehicles.")]
     internal class VehicleDeployedLocks : CovalencePlugin
     {
@@ -1314,7 +1314,11 @@ namespace Oxide.Plugins
                     new VehicleInfo
                     {
                         VehicleType = "rhib",
-                        PrefabPaths = new[] { "assets/content/vehicles/boats/rhib/rhib.prefab" },
+                        PrefabPaths = new[]
+                        {
+                            "assets/content/vehicles/boats/rhib/rhib.prefab",
+                            "assets/content/vehicles/boats/rhib/rhib.deepsea.prefab",
+                        },
                         LockPosition = new Vector3(-0.68f, 2.00f, 0.7f),
                         TimeSinceLastUsed = vehicle => (vehicle as RHIB)?.timeSinceLastUsedFuel ?? 0,
                     },
