@@ -1313,6 +1313,18 @@ namespace Oxide.Plugins
                     },
                     new VehicleInfo
                     {
+                        VehicleType = "ptboat",
+                        PrefabPaths = new[]
+                        {
+                            "assets/content/vehicles/boats/ptboat/ptboat.prefab",
+                            "assets/content/vehicles/boats/ptboat/ptboat.deepsea.prefab",
+                        },
+                        LockPosition = new Vector3(-1.05f, 2.10f, -0.75f),
+                        LockRotation = Quaternion.Euler(0, 90, 0),
+                        TimeSinceLastUsed = vehicle => (vehicle as RHIB)?.timeSinceLastUsedFuel ?? 0,
+                    },
+                    new VehicleInfo
+                    {
                         VehicleType = "rhib",
                         PrefabPaths = new[]
                         {
