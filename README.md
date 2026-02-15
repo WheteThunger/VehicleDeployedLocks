@@ -104,8 +104,9 @@ The following permissions allow players to deploy key locks to vehicles.
 ```json
 {
   "Allow NPCs to bypass locks": false,
-  "Allow deploying locks onto vehicles owned by other players": false,
   "Allow deploying locks onto unowned vehicles": true,
+  "Allow deploying locks onto vehicles owned by teammates": false,
+  "Allow deploying locks onto vehicles owned by other players": false,
   "Require cupboard auth to deploy locks onto unowned vehicles": false,
   "Auto claim unowned vehicles when deploying locks": false,
   "Auto replace vehicle ownership when deploying locks": false,
@@ -131,8 +132,9 @@ The following permissions allow players to deploy key locks to vehicles.
 ```
 
 - `Allow NPCs to bypass locks` (`true` or `false`) -- Whether to allow NPCs to bypass vehicle locks.
-- `Allow deploying locks onto vehicles owned by other players` (`true` or `false`) -- Whether to allow players to deploy a lock onto a vehicle owned by someone else (i.e., a vehicle whose `OwnerID` is a different player's Steam ID). Such vehicles are likely spawned by a plugin, or a plugin allowed the player to claim that vehicle. This is `false` by default to protect owned vehicles from having locks deployed onto them by others. Note: If the owner leaves a code lock unlocked, another player can still lock it with a custom code to lock out the owner.
 - `Allow deploying locks onto unowned vehicles` (`true` or `false`) -- Whether to allow players to deploy a lock onto a vehicle that has no owner (i.e., `OwnerID` is `0`), which usually describes vehicles that spawned naturally in the world, though some plugins may spawn vehicles with no owner as well. Note: Vehicles spawned at NPC vendors have no owner by default, unless set by a plugin such as [Vehicle Vendor Options](https://umod.org/plugins/vehicle-vendor-options). You can also use the [Claim Vehicle](https://umod.org/plugins/claim-vehicle) plugin to allow players to claim unowned vehicles with an optional cooldown.
+- `Allow deploying locks onto vehicles owned by teammates` (`true` or `false`) -- Whether to allow players to deploy a lock onto a vehicle owned by a teammate. Note: This setting is effectively `true` while `Allow deploying locks onto vehicles owned by other players` is `true`.
+- `Allow deploying locks onto vehicles owned by other players` (`true` or `false`) -- Whether to allow players to deploy a lock onto a vehicle owned by someone else (i.e., a vehicle whose `OwnerID` is a different player's Steam ID). Such vehicles are likely spawned by a plugin, or a plugin allowed the player to claim that vehicle. This is `false` by default to protect owned vehicles from having locks deployed onto them by others. Note: Regardless of this setting, if the owner leaves a code lock unlocked, another player can still lock it with a custom code to lock out the owner.
 - `Require cupboard auth to deploy locks onto unowned vehicles` (`true` or `false`) -- Whether to require players to be within TC radius to deploy a lock onto an **unowned** vehicle.
 - `Auto claim unowned vehicles when deploying locks` (`true` or `false` -- Whether to automatically assign vehicle ownership to the player deploying the lock, if the vehicle is not already owned. 
 - `Auto replace vehicle ownership when deploying locks` (`true` or `false`) -- Whether to automatically assign vehicle ownership to the player deploying the lock, if the vehicle is already owned.

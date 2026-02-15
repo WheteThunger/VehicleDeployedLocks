@@ -464,6 +464,15 @@ namespace Oxide.Plugins
             return carSeat is { associatedSeatingModule.DoorsAreLockable: false };
         }
 
+        private static bool IsSameTeam(BasePlayer player, ulong userId)
+        {
+            if (player.currentTeam == 0)
+                return false;
+
+            var team = RelationshipManager.ServerInstance.FindTeam(player.currentTeam);
+            return team != null && team.members.Contains(userId);
+        }
+
         #endregion
 
         #region Helper Methods - Lock Authorization
@@ -499,8 +508,7 @@ namespace Oxide.Plugins
             var sharingSettings = _config.SharingSettings;
             if (sharingSettings.Team && player.currentTeam != 0)
             {
-                var team = RelationshipManager.ServerInstance.FindTeam(player.currentTeam);
-                if (team != null && team.members.Contains(ownerId))
+                if (IsSameTeam(player, ownerId))
                     return true;
             }
 
@@ -786,11 +794,12 @@ namespace Oxide.Plugins
                 || vehicle.OwnerID != 0;
         }
 
-        private bool AllowDifferentOwner(IPlayer player, BaseEntity vehicle)
+        private bool AllowDifferentOwner(BasePlayer player, BaseEntity vehicle)
         {
             return _config.AllowIfDifferentOwner
                 || vehicle.OwnerID == 0
-                || vehicle.OwnerID.ToString() == player.Id;
+                || vehicle.OwnerID == player.userID
+                || (_config.AllowIfOwnedByTeammate && IsSameTeam(player, vehicle.OwnerID));
         }
 
         private void MaybeChargePlayerForLock(BasePlayer player, LockInfo lockInfo, PayType payType)
@@ -955,7 +964,7 @@ namespace Oxide.Plugins
                 && !IsDead(vehicle)
                 && _vehicleInfoManager.GetVehicleInfo(vehicle) != null
                 && AllowNoOwner(vehicle)
-                && AllowDifferentOwner(player.IPlayer, vehicle)
+                && AllowDifferentOwner(player, vehicle)
                 && player.CanBuild()
                 && GetVehicleLock(vehicle) == null
                 && CanVehicleHaveALock(vehicle)
@@ -1008,7 +1017,7 @@ namespace Oxide.Plugins
             return false;
         }
 
-        private bool VerifyNoOwnershipRestriction(IPlayer player, BaseEntity vehicle)
+        private bool VerifyNoOwnershipRestriction(IPlayer player, BasePlayer basePlayer, BaseEntity vehicle)
         {
             if (!AllowNoOwner(vehicle))
             {
@@ -1016,7 +1025,7 @@ namespace Oxide.Plugins
                 return false;
             }
 
-            if (!AllowDifferentOwner(player, vehicle))
+            if (!AllowDifferentOwner(basePlayer, vehicle))
             {
                 ReplyToPlayer(player, Lang.DeployErrorDifferentOwner);
                 return false;
@@ -1111,7 +1120,7 @@ namespace Oxide.Plugins
             if (!VerifyPermissionToVehicleAndLockType(player, vehicleInfo, lockType)
                 || !VerifyVehicleIsNotDead(player, vehicle)
                 || !VerifyNotForSale(player, vehicle)
-                || !VerifyNoOwnershipRestriction(player, vehicle)
+                || !VerifyNoOwnershipRestriction(player, basePlayer, vehicle)
                 || !VerifyCanBuild(player, vehicle)
                 || !VerifyVehicleHasNoLock(player, vehicle)
                 || !VerifyVehicleCanHaveALock(player, vehicle))
@@ -1901,17 +1910,20 @@ namespace Oxide.Plugins
             [JsonProperty("Allow NPCs to bypass locks")]
             public bool AllowNPCsToBypassLocks;
 
-            [JsonProperty("Allow deploying locks onto vehicles owned by other players")]
-            public bool AllowIfDifferentOwner;
-
-            [JsonProperty("AllowIfDifferentOwner")]
-            private bool DeprecatedAllowIfDifferentOwner { set => AllowIfDifferentOwner = value; }
-
             [JsonProperty("Allow deploying locks onto unowned vehicles")]
             public bool AllowIfNoOwner = true;
 
             [JsonProperty("AllowIfNoOwner")]
             private bool DeprecatedAllowIfNoOwner { set => AllowIfNoOwner = value; }
+
+            [JsonProperty("Allow deploying locks onto vehicles owned by teammates")]
+            public bool AllowIfOwnedByTeammate;
+
+            [JsonProperty("Allow deploying locks onto vehicles owned by other players")]
+            public bool AllowIfDifferentOwner;
+
+            [JsonProperty("AllowIfDifferentOwner")]
+            private bool DeprecatedAllowIfDifferentOwner { set => AllowIfDifferentOwner = value; }
 
             [JsonProperty("Require cupboard auth to deploy locks onto unowned vehicles")]
             public bool RequireTCIfNoOwner;
