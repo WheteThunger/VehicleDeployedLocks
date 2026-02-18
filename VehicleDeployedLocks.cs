@@ -1336,7 +1336,7 @@ namespace Oxide.Plugins
                             "assets/content/vehicles/boats/rhib/rhib.prefab",
                             "assets/content/vehicles/boats/rhib/rhib.deepsea.prefab",
                         },
-                        LockPosition = new Vector3(-0.68f, 2.00f, 0.7f),
+                        LockPosition = new Vector3(-0.68f, 2.00f, 0.83f),
                         TimeSinceLastUsed = vehicle => (vehicle as RHIB)?.timeSinceLastUsedFuel ?? 0,
                     },
                     new VehicleInfo
