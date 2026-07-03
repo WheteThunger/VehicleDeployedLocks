@@ -10,7 +10,7 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("Vehicle Deployed Locks", "WhiteThunder", "1.14.0")]
+    [Info("Vehicle Deployed Locks", "WhiteThunder", "1.14.1")]
     [Description("Allows players to deploy code locks and key locks to vehicles.")]
     internal class VehicleDeployedLocks : CovalencePlugin
     {
@@ -432,7 +432,8 @@ namespace Oxide.Plugins
 
         private static BaseLock GetVehicleLock(BaseEntity vehicle)
         {
-            return vehicle.GetSlot(BaseEntity.Slot.Lock) as BaseLock;
+            var baseLock = vehicle.GetSlot(BaseEntity.Slot.Lock) as BaseLock;
+            return baseLock is not CodeLock or KeyLock ? null : baseLock;
         }
 
         private static bool IsLockableEntity(BaseEntity entity)
